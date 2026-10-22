@@ -42,3 +42,7 @@ User choices: real accounts (sign up / log in), land on the existing home page a
 - Change plan page preselects the current plan (no accidental downgrade)
 - Globe easing is frame-rate independent (searched regions land centered)
 - Playing a New Release pauses the demo player
+
+## Iteration 3 (2026-10-22)
+- "No thanks, I'm just browsing" option under the 3 plans (sign-up, complete-profile, subscribe pages)
+- Browsing users (profile.browsing=true, POST /api/me/browse): globe explore/search only; bottom player replaced by "Browsing mode" bar with See plans; New Releases, comments, Artist Studio locked (backend 403)

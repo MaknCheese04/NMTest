@@ -1,7 +1,7 @@
 # Test Credentials (Clerk dev instance, preview only)
 
 - Test user (Artist plan set directly in DB for testing): listener+clerk_test@example.com / Test-pass-12345!  username "alexmorgan"
-- New-user test account (no profile yet): newbie+clerk_test@example.com / Test-pass-12345!
+- Browsing test account: newbie+clerk_test@example.com / Test-pass-12345! (username "newbie", browsing mode, no plan)
 - Any `+clerk_test` email signing up gets verification code `424242` (no real email sent).
 - Headless browsers are blocked by Clerk bot protection for password sign-in/sign-up. Use a sign-in ticket instead:
   `/root/.venv/bin/python /app/scripts/clerk_test_user.py [email]` -> prints {user_id, token (API bearer, 1h), ticket}

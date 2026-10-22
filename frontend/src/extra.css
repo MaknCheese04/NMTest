@@ -760,3 +760,75 @@
 .player-header {
   z-index: 20;
 }
+
+/* ---------- Browsing mode ---------- */
+.plan-picker .browse-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  height: auto;
+  margin: 22px 0 0;
+  padding: 14px 18px;
+  color: #e9dcc6;
+  font-size: 14px;
+  font-weight: 800;
+  background: transparent;
+  border: 1.5px dashed rgb(244 232 213 / 28%);
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.plan-picker .browse-option span {
+  color: #a8987e;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.plan-picker .browse-option:hover {
+  filter: none;
+  border-color: rgb(227 177 76 / 55%);
+}
+
+.plan-picker .browse-option.selected {
+  color: #f2d689;
+  background: rgb(64 42 14 / 35%);
+  border-style: solid;
+  border-color: #e3b14c;
+}
+
+.browse-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.browse-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.browse-copy .player-kicker {
+  margin: 0;
+}
+
+.browse-copy strong {
+  color: #f8ecdc;
+  font-size: 15px;
+}
+
+.browse-copy span {
+  color: #bfae92;
+  font-size: 12px;
+}
+
+.player-bottom-bar .browse-cta {
+  flex: 0 0 auto;
+  height: 42px;
+  margin: 0;
+  padding: 0 24px;
+}

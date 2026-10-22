@@ -7,7 +7,7 @@ const TAGLINES = {
   artist: "Publish your own music",
 }
 
-export default function PlanPicker({ value, onChange, currentPlan }) {
+export default function PlanPicker({ value, onChange, currentPlan, allowBrowse = true }) {
   const [plans, setPlans] = useState([])
 
   useEffect(() => {
@@ -44,6 +44,13 @@ export default function PlanPicker({ value, onChange, currentPlan }) {
           )
         })}
       </div>
+      {allowBrowse && (
+        <button type="button" className={`browse-option ${value === "browse" ? "selected" : ""}`}
+          aria-pressed={value === "browse"} data-testid="plan-browse-option" onClick={() => onChange("browse")}>
+          No thanks, I'm just browsing
+          <span>Explore the globe for free. No music, releases or comments.</span>
+        </button>
+      )}
     </div>
   )
 }

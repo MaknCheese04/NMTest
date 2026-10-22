@@ -48,7 +48,7 @@ function WithProfile({ children }) {
 function Home() {
   const { profile } = useProfile()
   if (!profile.completed) return <Navigate to="/complete-profile" replace />
-  if (!profile.plan_level) return <Navigate to="/subscribe" replace />
+  if (!profile.plan_level && !profile.browsing) return <Navigate to="/subscribe" replace />
   return <PlayerScreen />
 }
 

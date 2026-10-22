@@ -7,6 +7,8 @@ import PlayerBar from "./PlayerBar"
 import ArtistStudio from "./ArtistStudio"
 import WorldReleases from "./WorldReleases"
 import InfoPanel from "./InfoPanel"
+import BrowseBar from "./BrowseBar"
+import { useProfile } from "@/lib/profile"
 
 const PANELS = {
   Search: WorldReleases,
@@ -20,6 +22,8 @@ export default function PlayerScreen() {
   const [activeNav, setActiveNav] = useState("Profile")
   const [mobileMenu, setMobileMenu] = useState(false)
   const Panel = PANELS[activeNav]
+  const { profile } = useProfile()
+  const listener = (profile?.plan_level || 0) >= 1
 
   return (
     <main className="player-page" data-testid="player-page">
@@ -46,7 +50,7 @@ export default function PlayerScreen() {
             </div>
           )}
         </div>
-        <PlayerBar />
+        {listener ? <PlayerBar /> : <BrowseBar />}
       </section>
     </main>
   )
