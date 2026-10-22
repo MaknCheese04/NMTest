@@ -1,6 +1,8 @@
 import os
+import time
 
 import requests
+from fastapi import HTTPException
 
 STORAGE_BASE = (os.environ.get("INTEGRATION_PROXY_URL") or "").strip() or "https://integrations.emergentagent.com"
 STORAGE_URL = STORAGE_BASE.rstrip("/") + "/objstore/api/v1/storage"
@@ -18,12 +20,28 @@ def init_storage(force: bool = False):
     return storage_key
 
 
-def _with_retry(fn):
+def _attempt(fn):
     resp = fn(init_storage())
     if resp.status_code == 404 and "objects" in resp.url:
         resp = fn(init_storage(force=True))
     resp.raise_for_status()
     return resp
+
+
+def _with_retry(fn):
+    for attempt in range(3):
+        try:
+            return _attempt(fn)
+        except requests.HTTPError as e:
+            code = e.response.status_code if e.response is not None else 0
+            if code == 404:
+                raise HTTPException(404, "File not found")
+            if code < 500 or attempt == 2:
+                raise HTTPException(502, "File storage is busy right now. Please try again.")
+        except requests.RequestException:
+            if attempt == 2:
+                raise HTTPException(502, "File storage is busy right now. Please try again.")
+        time.sleep(0.6 * (attempt + 1))
 
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:

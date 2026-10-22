@@ -31,6 +31,7 @@ export default function TrackList({ tracks, onDelete, emptyText }) {
       if (audio.current.src) URL.revokeObjectURL(audio.current.src)
       audio.current.src = URL.createObjectURL(blob)
       await audio.current.play()
+      window.dispatchEvent(new Event("nm-release-play"))
       setPlaying(track.id)
     } catch (e) {
       setError(e.message || "Couldn't play this track.")

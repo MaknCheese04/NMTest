@@ -18,7 +18,27 @@ User choices: real accounts (sign up / log in), land on the existing home page a
 - Home/player: sidebar nav, 3D globe (drag/zoom/fit/search), live indicator, player bar, expanded player w/ synced lyrics and listener comments
 - Sign out from account menu
 
+## Iteration 2 (2026-10-22)
+- Login page first (Clerk sign-in card, email + password) with "New to NewMusiq? Create an Account" link
+- Create account: Clerk sign-up on left, plan picker on right (Standard $4.99 / Pro $9.99 / Artist $14.99, monthly, tiered)
+- Step 2 profile: photo on top, username (unique), country/state/zip; then Stripe subscription checkout (claimable sandbox, managed tax mode)
+- /subscribe (choose/change plan, old subscription cancelled on upgrade), /payment/success polling, /payment/cancel
+- Gating: home needs any plan; comments need Pro; Artist Studio upload (audio <=25MB + cover) needs Artist; Search panel lists all artist releases (playable)
+- Edit profile: change subscription + delete account (cancels Stripe sub, removes data, deletes Clerk login)
+- Globe: state/region borders thinner/darker, hidden at default view, fade in when zoomed or searching a region
+- Login screen NM logo: two globes (N, M facing outward) bounce together into still NM logo, repeats every 10s
+- Mobile: avatar button in header opens account menu
+- Note: username login not possible with managed sign-in (email only); username shown in app
+
 ## Backlog
 - P1: Real audio playback & track library; nav sections (Search, Artist Studio, Settings, Contact Us) are visual only
 - P1: Admin moderation for comments (approve/hide)
+- P1: Play artist uploads in the main bottom player; pin releases on the globe by location
 - P2: Pins on globe for artists/tracks by region
+
+## Iteration 2 fixes (after test report iteration_2)
+- Mobile account menu now above the globe (header z-index)
+- Object storage calls retry and return a friendly 502 instead of a crash
+- Change plan page preselects the current plan (no accidental downgrade)
+- Globe easing is frame-rate independent (searched regions land centered)
+- Playing a New Release pauses the demo player

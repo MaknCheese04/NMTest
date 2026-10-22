@@ -48,7 +48,7 @@ def H(u):
 
 
 def profile_form(name="TEST_UserA"):
-    return {"display_name": name, "country": "USA", "state": "CA", "zip_code": "94016"}
+    return {"username": name, "country": "USA", "state": "CA", "zip_code": "94016"}
 
 
 # Auth on /api/me
@@ -69,7 +69,7 @@ def test_me_with_token(user_new):
 # Profile save
 def test_put_me_missing_field(user_a):
     r = requests.put(f"{BASE_URL}/api/me", headers=H(user_a),
-                     data={"display_name": "X", "country": "", "state": "CA", "zip_code": "1"})
+                     data={"username": "XYZ", "country": "", "state": "CA", "zip_code": "1"})
     assert r.status_code in (400, 422)
 
 
@@ -85,7 +85,7 @@ def test_put_me_with_photo_and_get_photo(user_a):
     assert r.status_code == 200, r.text
     d = r.json()
     assert d["completed"] is True and d["has_photo"] is True
-    assert d["display_name"] == "TEST_UserA"
+    assert d["username"] == "TEST_UserA"
     g = requests.get(f"{BASE_URL}/api/me", headers=H(user_a)).json()
     assert g["completed"] is True and g["zip_code"] == "94016"
     p = requests.get(f"{BASE_URL}/api/me/photo", headers=H(user_a))
@@ -103,11 +103,22 @@ def test_put_me_without_photo_keeps_photo(user_a):
     r = requests.put(f"{BASE_URL}/api/me", headers=H(user_a), data=profile_form("TEST_UserA2"))
     assert r.status_code == 200
     assert r.json()["has_photo"] is True
-    assert r.json()["display_name"] == "TEST_UserA2"
+    assert r.json()["username"] == "TEST_UserA2"
 
 
-# Comments
-def test_comment_empty_rejected(user_a):
+# Comments (need pro plan -> set via mongo)
+def _set_plan(uid, plan):
+    from dotenv import load_dotenv
+    import pymongo
+    load_dotenv("/app/backend/.env")
+    c = pymongo.MongoClient(os.environ["MONGO_URL"])
+    c[os.environ["DB_NAME"]].profiles.update_one({"user_id": uid}, {"$set": {"plan": plan}})
+
+
+def test_comment_empty_rejected(user_a, user_b):
+    _set_plan(user_a["user_id"], "pro")
+    requests.put(f"{BASE_URL}/api/me", headers=H(user_b), data=profile_form("TEST_UserB"))
+    _set_plan(user_b["user_id"], "pro")
     r = requests.post(f"{BASE_URL}/api/comments", headers=H(user_a), json={"message": ""})
     assert r.status_code in (400, 422)
     r = requests.post(f"{BASE_URL}/api/comments", headers=H(user_a), json={"message": "   "})
@@ -116,7 +127,7 @@ def test_comment_empty_rejected(user_a):
 
 def test_comment_without_profile_rejected(user_new):
     r = requests.post(f"{BASE_URL}/api/comments", headers=H(user_new), json={"message": "hi"})
-    assert r.status_code == 400
+    assert r.status_code == 403
 
 
 def test_comment_requires_auth():

@@ -9,7 +9,7 @@ export default function Subscribe() {
   const { signOut } = useClerk()
   const checkout = useCheckout()
   const current = profile?.plan || null
-  const [plan, setPlan] = useState(() => (current && current !== "artist" ? (current === "standard" ? "pro" : "artist") : getSavedPlan()))
+  const [plan, setPlan] = useState(() => current || getSavedPlan())
   const [status, setStatus] = useState("")
   const [busy, setBusy] = useState(false)
   const choose = (p) => { setPlan(p); savePlan(p); setStatus("") }

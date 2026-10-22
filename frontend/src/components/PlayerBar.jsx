@@ -12,6 +12,12 @@ export default function PlayerBar() {
   const [progress, setProgress] = useState(74)
 
   useEffect(() => {
+    const pause = () => setIsPlaying(false)
+    window.addEventListener("nm-release-play", pause)
+    return () => window.removeEventListener("nm-release-play", pause)
+  }, [])
+
+  useEffect(() => {
     if (!isPlaying) return
     const t = setInterval(() => setProgress((c) => (c >= DURATION ? 0 : c + 1)), 1000)
     return () => clearInterval(t)

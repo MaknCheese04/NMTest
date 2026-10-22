@@ -756,3 +756,7 @@
   .nm-half, .nm-ghost { animation: none; }
   .nm-ghost { opacity: 0; }
 }
+
+.player-header {
+  z-index: 20;
+}

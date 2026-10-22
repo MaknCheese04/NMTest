@@ -126,10 +126,15 @@ export default function EarthGlobe({
     resize()
 
     let frame = 0
+    let last = performance.now()
     const render = () => {
-      earth.rotation.x += (rotation.current.x - earth.rotation.x) * 0.13
-      earth.rotation.y += (rotation.current.y - earth.rotation.y) * 0.13
-      camera.position.z += (cameraDistance.current - camera.position.z) * 0.12
+      const now = performance.now()
+      const steps = Math.min((now - last) / (1000 / 60), 60)
+      last = now
+      const ease = (k) => 1 - Math.pow(1 - k, steps)
+      earth.rotation.x += (rotation.current.x - earth.rotation.x) * ease(0.13)
+      earth.rotation.y += (rotation.current.y - earth.rotation.y) * ease(0.13)
+      camera.position.z += (cameraDistance.current - camera.position.z) * ease(0.12)
       const boundaryOpacity = THREE.MathUtils.clamp(
         (2.45 - camera.position.z) / 0.45,
         0,
