@@ -61,7 +61,7 @@ function UploadForm({ onUploaded }) {
   )
 }
 
-export default function ArtistStudio() {
+export default function ArtistStudio({ onChanged }) {
   const api = useApi()
   const { profile } = useProfile()
   const [tracks, setTracks] = useState([])
@@ -69,7 +69,8 @@ export default function ArtistStudio() {
 
   const load = useCallback(() => {
     api("/tracks/mine").then((r) => r.json()).then(setTracks).catch(() => {})
-  }, [api])
+    onChanged?.()
+  }, [api, onChanged])
 
   useEffect(() => { if (isArtist) load() }, [isArtist, load])
 

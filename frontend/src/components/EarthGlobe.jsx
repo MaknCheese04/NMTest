@@ -3,12 +3,31 @@ import * as THREE from "three"
 import { LineMaterial } from "three/addons/lines/LineMaterial.js"
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js"
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js"
-import { createAdminBoundaryPositions, createEarthMaps } from "@/lib/earthMaps"
+import { createAdminBoundaryPositions, createEarthMaps, pointOnGlobe } from "@/lib/earthMaps"
+
+function glowTexture() {
+  const c = document.createElement("canvas")
+  c.width = c.height = 64
+  const g = c.getContext("2d")
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32)
+  grad.addColorStop(0, "rgba(255,246,220,1)")
+  grad.addColorStop(0.25, "rgba(242,214,137,.85)")
+  grad.addColorStop(0.6, "rgba(201,139,224,.35)")
+  grad.addColorStop(1, "rgba(201,139,224,0)")
+  g.fillStyle = grad
+  g.fillRect(0, 0, 64, 64)
+  return new THREE.CanvasTexture(c)
+}
 
 export default function EarthGlobe({
   targetLocation,
+  pins = [],
+  onPinClick,
 }) {
   const canvasRef = useRef(null)
+  const three = useRef(null)
+  const pinClick = useRef(onPinClick)
+  pinClick.current = onPinClick
   const rotation = useRef({ x: -0.12, y: -0.32 })
   const cameraDistance = useRef(3.25)
   const drag = useRef({
@@ -78,6 +97,10 @@ export default function EarthGlobe({
     const earth = new THREE.Mesh(geometry, material)
     earth.rotation.set(rotation.current.x, rotation.current.y, 0)
     scene.add(earth)
+    const pinGroup = new THREE.Group()
+    earth.add(pinGroup)
+    const glow = glowTexture()
+    three.current = { earth, camera, renderer, pinGroup, glow }
 
     const boundaryGeometry = new LineSegmentsGeometry()
     boundaryGeometry.setPositions(createAdminBoundaryPositions())
@@ -142,6 +165,12 @@ export default function EarthGlobe({
       )
       boundaryMaterial.opacity = boundaryOpacity * 0.9
       boundaryLines.visible = boundaryOpacity > 0.01
+      const pulse = 1 + Math.sin(now / 380) * 0.18
+      const zoom = camera.position.z / 3.25
+      pinGroup.children.forEach((pin) => {
+        pin.children[0]?.scale.setScalar(zoom)
+        pin.children[1]?.scale.setScalar(0.085 * zoom * pulse)
+      })
       renderer.render(scene, camera)
       frame = window.requestAnimationFrame(render)
     }
@@ -158,9 +187,44 @@ export default function EarthGlobe({
       boundaryMaterial.dispose()
       rim.geometry.dispose()
       rim.material.dispose()
+      glow.dispose()
+      three.current = null
       renderer.dispose()
     }
   }, [])
+
+  useEffect(() => {
+    const t = three.current
+    if (!t) return
+    t.pinGroup.clear()
+    const dot = new THREE.SphereGeometry(0.009, 12, 12)
+    const dotMat = new THREE.MeshBasicMaterial({ color: 0xffe9a8, toneMapped: false })
+    const glowMat = new THREE.SpriteMaterial({ map: t.glow, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false })
+    pins.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon)).forEach((p) => {
+      const pin = new THREE.Group()
+      pin.position.set(...pointOnGlobe([p.lon, p.lat]))
+      const core = new THREE.Mesh(dot, dotMat)
+      core.userData.track = p
+      const halo = new THREE.Sprite(glowMat)
+      halo.scale.setScalar(0.11)
+      halo.userData.track = p
+      pin.add(core, halo)
+      t.pinGroup.add(pin)
+    })
+    return () => { dot.dispose(); dotMat.dispose(); glowMat.dispose() }
+  }, [pins])
+
+  function pickPin(event) {
+    const t = three.current
+    if (!t || !t.pinGroup.children.length) return null
+    const rect = event.currentTarget.getBoundingClientRect()
+    const pointer = new THREE.Vector2(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1)
+    const ray = new THREE.Raycaster()
+    ray.setFromCamera(pointer, t.camera)
+    const hits = ray.intersectObjects([t.earth, ...t.pinGroup.children.flatMap((g) => g.children)], false)
+    const first = hits[0]
+    return first && first.object.userData.track ? first.object.userData.track : null
+  }
 
   function startDrag(event) {
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -188,6 +252,11 @@ export default function EarthGlobe({
   }
 
   function stopDrag(event) {
+    const moved = Math.abs(event.clientX - drag.current.x) + Math.abs(event.clientY - drag.current.y)
+    if (drag.current.active && moved < 6 && event.type === "pointerup") {
+      const track = pickPin(event)
+      if (track) pinClick.current?.(track)
+    }
     drag.current.active = false
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)

@@ -22,7 +22,7 @@ export function useApi() {
   }, [getToken])
 }
 
-const ProfileContext = createContext({ profile: null, photoUrl: "", error: "", refresh: async () => {} })
+const ProfileContext = createContext({ profile: null, photoUrl: "", error: "", role: "member", refresh: async () => {} })
 
 export function ProfileProvider({ children }) {
   const { isSignedIn, userId } = useAuth()
@@ -30,6 +30,7 @@ export function ProfileProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [photoUrl, setPhotoUrl] = useState("")
   const [error, setError] = useState("")
+  const [role, setRole] = useState("member")
 
   const loadPhoto = useCallback(async (hasPhoto) => {
     if (!hasPhoto) return setPhotoUrl("")
@@ -45,6 +46,7 @@ export function ProfileProvider({ children }) {
       const data = await (await api("/me")).json()
       setProfile(data)
       loadPhoto(data.has_photo)
+      api("/me/role").then((r) => r.json()).then((d) => setRole(d.role)).catch(() => {})
       return data
     } catch (e) {
       setError("We couldn't load your account. Please try again.")
@@ -54,10 +56,10 @@ export function ProfileProvider({ children }) {
 
   useEffect(() => {
     if (isSignedIn) refresh().catch(() => {})
-    else { setProfile(null); setPhotoUrl(""); setError("") }
+    else { setProfile(null); setPhotoUrl(""); setError(""); setRole("member") }
   }, [isSignedIn, userId, refresh])
 
-  return <ProfileContext.Provider value={{ profile, photoUrl, error, refresh }}>{children}</ProfileContext.Provider>
+  return <ProfileContext.Provider value={{ profile, photoUrl, error, role, refresh }}>{children}</ProfileContext.Provider>
 }
 
 export const useProfile = () => useContext(ProfileContext)

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import Sidebar, { Avatar } from "./Sidebar"
 import AccountMenu from "./AccountMenu"
 import GlobeSearch from "./GlobeSearch"
@@ -8,7 +8,8 @@ import ArtistStudio from "./ArtistStudio"
 import WorldReleases from "./WorldReleases"
 import InfoPanel from "./InfoPanel"
 import BrowseBar from "./BrowseBar"
-import { useProfile } from "@/lib/profile"
+import { useApi } from "@/lib/profile"
+import { PlayerProvider, usePlayer } from "@/lib/player"
 
 const PANELS = {
   Search: WorldReleases,
@@ -17,13 +18,19 @@ const PANELS = {
   "Contact Us": () => <InfoPanel kind="contact" />,
 }
 
-export default function PlayerScreen() {
+function Home() {
+  const api = useApi()
+  const player = usePlayer()
   const [globeLocation, setGlobeLocation] = useState(null)
   const [activeNav, setActiveNav] = useState("Profile")
   const [mobileMenu, setMobileMenu] = useState(false)
+  const [tracks, setTracks] = useState(null)
   const Panel = PANELS[activeNav]
-  const { profile } = useProfile()
-  const listener = (profile?.plan_level || 0) >= 1
+
+  const loadTracks = useCallback(() => {
+    api("/tracks").then((r) => r.json()).then(setTracks).catch(() => setTracks([]))
+  }, [api])
+  useEffect(() => { loadTracks() }, [loadTracks])
 
   return (
     <main className="player-page" data-testid="player-page">
@@ -41,17 +48,22 @@ export default function PlayerScreen() {
           </div>
         </header>
         <div className="player-content">
-          <EarthGlobe targetLocation={globeLocation} />
+          <EarthGlobe targetLocation={globeLocation} pins={tracks || []} onPinClick={(t) => player.play(t)} />
+          {player.error && !Panel && <p className="pin-error" data-testid="pin-play-error">{player.error}</p>}
           {Panel && (
             <div className="nav-panel" data-testid="nav-panel">
               <button type="button" className="nav-panel-close" aria-label="Close panel"
                 data-testid="nav-panel-close" onClick={() => setActiveNav("Profile")}>×</button>
-              <Panel />
+              <Panel tracks={tracks} onChanged={loadTracks} />
             </div>
           )}
         </div>
-        {listener ? <PlayerBar /> : <BrowseBar />}
+        {player.listener || player.track ? <PlayerBar /> : <BrowseBar />}
       </section>
     </main>
   )
+}
+
+export default function PlayerScreen() {
+  return <PlayerProvider><Home /></PlayerProvider>
 }

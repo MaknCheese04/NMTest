@@ -6,6 +6,7 @@ import ProfileSetup from "@/components/ProfileSetup"
 import Subscribe from "@/components/Subscribe"
 import { PaymentCancel, PaymentSuccess } from "@/components/PaymentResult"
 import PlayerScreen from "@/components/PlayerScreen"
+import AdminPage from "@/components/AdminPage"
 import { ProfileProvider, useProfile } from "@/lib/profile"
 
 function Protected({ children }) {
@@ -72,6 +73,7 @@ export default function App() {
             <Route path="/subscribe" element={guard(<SubscribeRoute />)} />
             <Route path="/payment/success" element={<Protected><PaymentSuccess /></Protected>} />
             <Route path="/payment/cancel" element={<Protected><PaymentCancel /></Protected>} />
+            <Route path="/admin" element={guard(<AdminPage />)} />
             <Route path="/" element={guard(<Home />)} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

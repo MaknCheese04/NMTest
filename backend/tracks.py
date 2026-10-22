@@ -1,20 +1,28 @@
+import logging
+import os
+import subprocess
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
+import imageio_ffmpeg
+import requests
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 try:
-    from backend.deps import db, require_level
+    from backend.deps import db, require_completed, require_level
     from backend.storage import APP_NAME, get_object, put_object
 except ModuleNotFoundError:
-    from deps import db, require_level
+    from deps import db, require_completed, require_level
     from storage import APP_NAME, get_object, put_object
 
 tracks_router = APIRouter(prefix="/api/tracks")
+logger = logging.getLogger("newmusiq.tracks")
+PREVIEW_SECONDS = 15
 
 AUDIO_TYPES = {"audio/mpeg": "mp3", "audio/mp3": "mp3", "audio/wav": "wav", "audio/x-wav": "wav",
                "audio/wave": "wav", "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/aac": "aac",
@@ -32,11 +40,52 @@ class Track(BaseModel):
     has_cover: bool
     created_at: str
     mine: bool
+    lat: Optional[float] = None
+    lon: Optional[float] = None
 
 
 def track_out(doc: dict, user_id: str) -> Track:
     return Track(id=doc["id"], title=doc["title"], artist_name=doc["artist_name"], location=doc.get("location", ""),
-                 has_cover=bool(doc.get("cover_path")), created_at=doc["created_at"], mine=doc["user_id"] == user_id)
+                 has_cover=bool(doc.get("cover_path")), created_at=doc["created_at"], mine=doc["user_id"] == user_id,
+                 lat=doc.get("lat"), lon=doc.get("lon"))
+
+
+def geocode(q: str):
+    if len(q.strip()) < 2:
+        return None, None
+    try:
+        r = requests.get("https://nominatim.openstreetmap.org/search", params={"format": "jsonv2", "limit": "1", "q": q},
+                         headers={"Accept-Language": "en", "User-Agent": "NewMusiq/1.0"}, timeout=10)
+        r.raise_for_status()
+        m = r.json()
+        return (float(m[0]["lat"]), float(m[0]["lon"])) if m else (None, None)
+    except (requests.RequestException, ValueError, KeyError):
+        return None, None
+
+
+def make_preview(data: bytes) -> bytes:
+    with tempfile.TemporaryDirectory() as tmp:
+        src, out = os.path.join(tmp, "in"), os.path.join(tmp, "out.mp3")
+        open(src, "wb").write(data)
+        subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-i", src, "-t", str(PREVIEW_SECONDS),
+                        "-vn", "-af", f"afade=t=out:st={PREVIEW_SECONDS - 2}:d=2", "-b:a", "128k", out],
+                       check=True, timeout=60)
+        return open(out, "rb").read()
+
+
+async def ensure_preview(doc: dict) -> str:
+    if doc.get("preview_path"):
+        return doc["preview_path"]
+    data, _ = await run_in_threadpool(get_object, doc["audio_path"])
+    try:
+        clip = await run_in_threadpool(make_preview, data)
+    except (subprocess.SubprocessError, OSError) as e:
+        logger.error(f"Preview failed for {doc['id']}: {e}")
+        raise HTTPException(500, "Preview isn't available for this track.")
+    path = f"{APP_NAME}/previews/{doc['user_id']}/{doc['id']}.mp3"
+    result = await run_in_threadpool(put_object, path, clip, "audio/mpeg")
+    await db.tracks.update_one({"id": doc["id"]}, {"$set": {"preview_path": result["path"]}})
+    return result["path"]
 
 
 async def _store(file: UploadFile, types: dict, limit: int, kind: str, user_id: str):
@@ -71,12 +120,17 @@ async def upload_track(
     }
     if cover is not None and cover.filename:
         doc["cover_path"], doc["cover_type"] = await _store(cover, IMAGE_TYPES, MAX_IMAGE, "cover", profile["user_id"])
+    doc["lat"], doc["lon"] = await run_in_threadpool(geocode, doc["location"])
     await db.tracks.insert_one(doc)
+    try:
+        await ensure_preview(doc)
+    except HTTPException:
+        pass
     return track_out(doc, profile["user_id"])
 
 
 @tracks_router.get("", response_model=list[Track])
-async def list_tracks(profile: dict = Depends(require_level(1))):
+async def list_tracks(profile: dict = Depends(require_completed)):
     docs = await db.tracks.find({"is_deleted": False}, {"_id": 0}).sort("created_at", -1).to_list(50)
     return [track_out(d, profile["user_id"]) for d in docs]
 
@@ -101,8 +155,15 @@ async def track_audio(track_id: str, profile: dict = Depends(require_level(1))):
     return Response(content=data, media_type=doc.get("audio_type") or ctype)
 
 
+@tracks_router.get("/{track_id}/preview")
+async def track_preview(track_id: str, profile: dict = Depends(require_completed)):
+    doc = await _get(track_id)
+    data, _ = await run_in_threadpool(get_object, await ensure_preview(doc))
+    return Response(content=data, media_type="audio/mpeg")
+
+
 @tracks_router.get("/{track_id}/cover")
-async def track_cover(track_id: str, profile: dict = Depends(require_level(1))):
+async def track_cover(track_id: str, profile: dict = Depends(require_completed)):
     doc = await _get(track_id)
     if not doc.get("cover_path"):
         raise HTTPException(404, "No cover")

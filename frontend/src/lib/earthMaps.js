@@ -27,7 +27,7 @@ function normalizeLocationName(value) {
     .replace(/[^a-z0-9]/g, "")
 }
 
-function pointOnGlobe([longitude, latitude]) {
+export function pointOnGlobe([longitude, latitude]) {
   const radius = 1.012
   const phi = ((longitude + 180) * Math.PI) / 180
   const theta = ((90 - latitude) * Math.PI) / 180

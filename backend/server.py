@@ -20,12 +20,14 @@ try:
     from backend.storage import APP_NAME, get_object, init_storage, put_object
     from backend.billing import payments_router
     from backend.tracks import tracks_router
+    from backend.admin import admin_router
 except ModuleNotFoundError:
     from deps import PLANS, client, db, plan_level, require_level
     from clerk_auth import clerk_router, require_user
     from storage import APP_NAME, get_object, init_storage, put_object
     from billing import payments_router
     from tracks import tracks_router
+    from admin import admin_router
 
 logger = logging.getLogger("newmusiq")
 logging.basicConfig(level=logging.INFO)
@@ -256,6 +258,7 @@ async def geo_search(q: str = Query(..., min_length=2, max_length=120)):
 
 app.include_router(api_router)
 app.include_router(tracks_router)
+app.include_router(admin_router)
 app.include_router(payments_router)
 app.include_router(clerk_router)
 
@@ -281,6 +284,16 @@ async def startup():
         logger.info("Storage initialized")
     except Exception as e:
         logger.error(f"Storage init failed: {e}")
+
+
+@app.on_event("startup")
+async def move_retired_roles():
+    try:
+        from backend.deps import RETIRED_ROLES
+    except ModuleNotFoundError:
+        from deps import RETIRED_ROLES
+    for old, new in RETIRED_ROLES.items():
+        await db.users.update_many({"role": old}, {"$set": {"role": new}})
 
 
 @app.on_event("shutdown")
