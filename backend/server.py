@@ -23,6 +23,7 @@ try:
     from backend.admin import admin_router
     from backend.music import music_router
     from backend.features import features_router
+    from backend.weekly import weekly_router
 except ModuleNotFoundError:
     from deps import PLANS, client, db, plan_level, require_level
     from clerk_auth import clerk_router, require_user
@@ -32,6 +33,7 @@ except ModuleNotFoundError:
     from admin import admin_router
     from music import music_router
     from features import features_router
+    from weekly import weekly_router
 
 logger = logging.getLogger("newmusiq")
 logging.basicConfig(level=logging.INFO)
@@ -265,6 +267,7 @@ app.include_router(tracks_router)
 app.include_router(admin_router)
 app.include_router(music_router)
 app.include_router(features_router)
+app.include_router(weekly_router)
 app.include_router(payments_router)
 app.include_router(clerk_router)
 

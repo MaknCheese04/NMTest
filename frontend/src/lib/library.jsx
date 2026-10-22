@@ -8,6 +8,7 @@ export const itemFromTrack = (t) => ({ kind: "track", ref_id: t.id, title: t.tit
 export const keyOf = (item) => `${item.kind}:${item.ref_id}`
 
 export function playItem(player, item) {
+  if (item.kind === "video") return window.open(`https://www.youtube.com/watch?v=${item.ref_id}`, "_blank", "noopener")
   if (item.kind === "track") return player.play({ id: item.ref_id, title: item.title, artist_name: item.artist, has_cover: true })
   return player.playSong({ id: item.ref_id, title: item.title, artist: item.artist, artwork: item.artwork, preview_url: item.preview_url })
 }

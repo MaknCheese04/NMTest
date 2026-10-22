@@ -109,7 +109,9 @@ async def sync_track_lyrics(track_id: str, data: bytes, ext: str, lyrics: str):
     lines = [l.strip() for l in lyrics.splitlines() if l.strip()]
     try:
         resp = await transcribe(data, f".{ext}", timestamps=True)
-        segs = [(float(s.start), float(s.end), s.text) for s in (getattr(resp, "segments", None) or [])]
+        raw = getattr(resp, "segments", None) or []
+        segs = [(float(s["start"]), float(s["end"]), s["text"]) if isinstance(s, dict) else (float(s.start), float(s.end), s.text)
+                for s in raw]
         synced = align_lyrics(lines, segs)
         await db.tracks.update_one({"id": track_id}, {"$set": {"synced_lyrics": synced, "lyrics_status": "synced"}})
     except Exception:
@@ -161,7 +163,7 @@ async def search_hum(audio: UploadFile = File(...), profile: dict = Depends(requ
 
 # ---------- Likes, playlists, visits, my comments ----------
 class Item(BaseModel):
-    kind: Literal["track", "song"]
+    kind: Literal["track", "song", "video"]
     ref_id: str = Field(min_length=1, max_length=60)
     title: str = Field(max_length=200)
     artist: str = Field("", max_length=200)

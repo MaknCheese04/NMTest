@@ -9,9 +9,11 @@ from starlette.concurrency import run_in_threadpool
 try:
     from backend.deps import require_completed
     from backend.regional_genres import GENRES, REGIONS
+    from backend.weekly import weekly_lists
 except ModuleNotFoundError:
     from deps import require_completed
     from regional_genres import GENRES, REGIONS
+    from weekly import weekly_lists
 
 music_router = APIRouter(prefix="/api/music")
 CHART_URL = "https://rss.marketingtools.apple.com/api/v2/{cc}/music/most-played/25/songs.json"
@@ -85,13 +87,14 @@ def top_genres(songs: list) -> list:
 @music_router.get("/region")
 async def region_insights(country: str = Query(..., max_length=80), state: str = Query("", max_length=80),
                           profile: dict = Depends(require_completed)):
-    cc = country_code(country)
-    chart = await run_in_threadpool(fetch_chart, cc) if cc else {"updated": "", "songs": []}
+    cc = country_code(country) or country[:20]
     key = f"{cc}:{state}" if state else f"{cc}:"
     heritage = [{"id": gid, "name": GENRES[gid][0]} for gid, _ in REGIONS.get(key, [])]
-    return {"name": state or country, "country": country, "country_code": cc or "", "state": state,
-            "region_key": key, "chart_scope": country, "chart_updated": chart["updated"],
-            "top_songs": chart["songs"], "top_genres": top_genres(chart["songs"]), "heritage": heritage}
+    label = f"{state}, {country}" if state else country
+    weekly = await weekly_lists(key, label)
+    return {"name": state or country, "country": country, "country_code": cc, "state": state, "region_key": key,
+            "week": weekly["week"], "updated_at": weekly["updated_at"], "top_songs": weekly["top_songs"],
+            "top_genres": weekly["top_genres"], "heritage": heritage}
 
 
 def resolve_song(artist: str, title: Optional[str]) -> Optional[dict]:
@@ -114,7 +117,7 @@ async def heritage_genre(genre_id: str, region_key: str = Query(..., max_length=
     entry = next((songs for gid, songs in REGIONS.get(region_key, []) if gid == genre_id), None)
     if entry is None:
         raise HTTPException(404, "Genre not found for this region")
-    songs = [s for s in [await run_in_threadpool(resolve_song, a, t) for a, t in entry] if s]
+    songs = [{"artist": a, "title": t or ""} for a, t in entry]
     name, summary = GENRES[genre_id]
     return {"id": genre_id, "name": name, "summary": summary, "songs": songs}
 
