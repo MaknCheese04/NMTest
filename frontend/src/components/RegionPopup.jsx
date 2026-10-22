@@ -137,6 +137,11 @@ export default function RegionPopup({ region, onClose }) {
   const pattern = regionPattern(region.country, region.state)
 
   useEffect(() => { setStack([]) }, [params])
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === "Escape") onClose() }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onClose])
 
   return (
     <div className="region-popup" role="dialog" aria-label={`Music of ${region.state || region.country}`} data-testid="region-popup">

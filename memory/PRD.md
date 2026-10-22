@@ -46,3 +46,20 @@ User choices: real accounts (sign up / log in), land on the existing home page a
 ## Iteration 3 (2026-10-22)
 - "No thanks, I'm just browsing" option under the 3 plans (sign-up, complete-profile, subscribe pages)
 - Browsing users (profile.browsing=true, POST /api/me/browse): globe explore/search only; bottom player replaced by "Browsing mode" bar with See plans; New Releases, comments, Artist Studio locked (backend 403)
+
+## Iteration 4 (2026-10-22)
+- Free 15s previews of artist releases for browsing users (ffmpeg via imageio-ffmpeg, cached preview_path)
+- Globe pins: tracks geocoded on upload (lat/lon), glowing pins scale with zoom; click pin plays track
+- Artist uploads + Apple previews play in the main bottom player (PlayerProvider in lib/player.jsx)
+- Admin (/admin): approve/hide comments, People list with role changes. Roles in `users` collection; ADMIN_EMAIL env (not set yet). Test user alexmorgan set admin in preview DB.
+
+## Iteration 5 (2026-10-22) — Region pop-up
+- Click any country (or US state) on globe -> RegionPopup (offline detection via world-atlas + us-atlas polygons)
+- "Music genres from this area": user-provided summaries for WA, OR, CA, NV, MT, UT, AZ, NE, OK, TX (backend/regional_genres.py) + 2 curated songs each, resolved via iTunes Search with 30s previews
+- "Top genres right now" (counted from live chart) -> click = generated playlist (iTunes Search)
+- "Top songs right now": live Apple Music most-played chart per country (rss.marketingtools.apple.com, cached 1h); US states use the US chart (no state charts exist)
+- Song detail view (album, release, length, play 30s preview, open in Apple Music); browsing users can view but not play
+- Cultural side borders per region (lib/patterns.js: evergreen, surf, deco, canyon, lonestar, western, seigaiha, papel, kente, stars, waves)
+- Offline US state search in globe search (Nominatim rate-limits)
+- Fixes after test iteration 4: mobile popup no sideways overflow & sits above player; uploads fall back to offline country/state coordinates for pins when OpenStreetMap is rate-limited; Escape closes region popup
+- Known: Apple chart genre names follow the storefront language (e.g. Japanese in JP); centred-search camera can land slightly off-centre on some countries

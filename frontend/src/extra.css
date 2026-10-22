@@ -1176,3 +1176,14 @@
   .rp-song-detail img { max-width: 200px; }
   .region-popup { top: 10px; bottom: 96px; }
 }
+
+.rp-scroll, .rp-overview > section { min-width: 0; }
+.rp-overview, .rp-list { grid-template-columns: minmax(0, 1fr); }
+.rp-list .rp-song { min-width: 0; }
+
+@media (max-width: 760px) {
+  .region-popup { bottom: 150px; }
+  .browse-bar { flex-wrap: wrap; gap: 10px; }
+  .browse-copy span { font-size: 11px; white-space: normal; }
+  .browse-copy strong { font-size: 13px; }
+}

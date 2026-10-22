@@ -103,6 +103,8 @@ async def _store(file: UploadFile, types: dict, limit: int, kind: str, user_id: 
 async def upload_track(
     title: str = Form(...),
     location: str = Form(""),
+    lat: Optional[float] = Form(None),
+    lon: Optional[float] = Form(None),
     audio: UploadFile = File(...),
     cover: Optional[UploadFile] = File(None),
     profile: dict = Depends(require_level(3)),
@@ -120,7 +122,9 @@ async def upload_track(
     }
     if cover is not None and cover.filename:
         doc["cover_path"], doc["cover_type"] = await _store(cover, IMAGE_TYPES, MAX_IMAGE, "cover", profile["user_id"])
-    doc["lat"], doc["lon"] = await run_in_threadpool(geocode, doc["location"])
+    glat, glon = await run_in_threadpool(geocode, doc["location"])
+    valid = lat is not None and lon is not None and -90 <= lat <= 90 and -180 <= lon <= 180
+    doc["lat"], doc["lon"] = (glat, glon) if glat is not None else ((lat, lon) if valid else (None, None))
     await db.tracks.insert_one(doc)
     try:
         await ensure_preview(doc)

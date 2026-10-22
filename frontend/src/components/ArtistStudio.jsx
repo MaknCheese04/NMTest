@@ -2,6 +2,17 @@ import { useCallback, useEffect, useState } from "react"
 import TrackList from "./TrackList"
 import UpgradeCard from "./UpgradeCard"
 import { useApi, useProfile } from "@/lib/profile"
+import { findCountryLocation } from "@/lib/earthMaps"
+import { findStateLocation } from "@/lib/regions"
+
+function guessPlace(text) {
+  const parts = text.split(",").map((p) => p.trim()).filter(Boolean).reverse()
+  for (const p of parts) {
+    const hit = findStateLocation(p) || findCountryLocation(p)
+    if (hit) return hit
+  }
+  return null
+}
 
 const AUDIO_ACCEPT = "audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/aac,audio/ogg,audio/flac"
 
@@ -22,6 +33,8 @@ function UploadForm({ onUploaded }) {
     const body = new FormData()
     body.append("title", title)
     body.append("location", location)
+    const guess = guessPlace(location)
+    if (guess) { body.append("lat", guess.latitude); body.append("lon", guess.longitude) }
     body.append("audio", audio)
     if (cover) body.append("cover", cover)
     setBusy(true)
