@@ -10,6 +10,8 @@ import InfoPanel from "./InfoPanel"
 import BrowseBar from "./BrowseBar"
 import { useApi } from "@/lib/profile"
 import { PlayerProvider, usePlayer } from "@/lib/player"
+import RegionPopup from "./RegionPopup"
+import { findRegion } from "@/lib/regions"
 
 const PANELS = {
   Search: WorldReleases,
@@ -25,6 +27,7 @@ function Home() {
   const [activeNav, setActiveNav] = useState("Profile")
   const [mobileMenu, setMobileMenu] = useState(false)
   const [tracks, setTracks] = useState(null)
+  const [region, setRegion] = useState(null)
   const Panel = PANELS[activeNav]
 
   const loadTracks = useCallback(() => {
@@ -48,7 +51,9 @@ function Home() {
           </div>
         </header>
         <div className="player-content">
-          <EarthGlobe targetLocation={globeLocation} pins={tracks || []} onPinClick={(t) => player.play(t)} />
+          <EarthGlobe targetLocation={globeLocation} pins={tracks || []} onPinClick={(t) => player.play(t)}
+            onRegionClick={({ lat, lon }) => { const r = findRegion(lon, lat); if (r) { setRegion(r); setActiveNav("Profile") } }} />
+          {region && <RegionPopup region={region} onClose={() => setRegion(null)} />}
           {player.error && !Panel && <p className="pin-error" data-testid="pin-play-error">{player.error}</p>}
           {Panel && (
             <div className="nav-panel" data-testid="nav-panel">

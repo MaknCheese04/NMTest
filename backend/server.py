@@ -21,6 +21,7 @@ try:
     from backend.billing import payments_router
     from backend.tracks import tracks_router
     from backend.admin import admin_router
+    from backend.music import music_router
 except ModuleNotFoundError:
     from deps import PLANS, client, db, plan_level, require_level
     from clerk_auth import clerk_router, require_user
@@ -28,6 +29,7 @@ except ModuleNotFoundError:
     from billing import payments_router
     from tracks import tracks_router
     from admin import admin_router
+    from music import music_router
 
 logger = logging.getLogger("newmusiq")
 logging.basicConfig(level=logging.INFO)
@@ -259,6 +261,7 @@ async def geo_search(q: str = Query(..., min_length=2, max_length=120)):
 app.include_router(api_router)
 app.include_router(tracks_router)
 app.include_router(admin_router)
+app.include_router(music_router)
 app.include_router(payments_router)
 app.include_router(clerk_router)
 

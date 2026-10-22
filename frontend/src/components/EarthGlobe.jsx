@@ -4,6 +4,7 @@ import { LineMaterial } from "three/addons/lines/LineMaterial.js"
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js"
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js"
 import { createAdminBoundaryPositions, createEarthMaps, pointOnGlobe } from "@/lib/earthMaps"
+import { latLonFromPoint } from "@/lib/regions"
 
 function glowTexture() {
   const c = document.createElement("canvas")
@@ -23,11 +24,14 @@ export default function EarthGlobe({
   targetLocation,
   pins = [],
   onPinClick,
+  onRegionClick,
 }) {
   const canvasRef = useRef(null)
   const three = useRef(null)
   const pinClick = useRef(onPinClick)
   pinClick.current = onPinClick
+  const regionClick = useRef(onRegionClick)
+  regionClick.current = onRegionClick
   const rotation = useRef({ x: -0.12, y: -0.32 })
   const cameraDistance = useRef(3.25)
   const drag = useRef({
@@ -216,14 +220,17 @@ export default function EarthGlobe({
 
   function pickPin(event) {
     const t = three.current
-    if (!t || !t.pinGroup.children.length) return null
+    if (!t) return null
     const rect = event.currentTarget.getBoundingClientRect()
     const pointer = new THREE.Vector2(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1)
     const ray = new THREE.Raycaster()
     ray.setFromCamera(pointer, t.camera)
     const hits = ray.intersectObjects([t.earth, ...t.pinGroup.children.flatMap((g) => g.children)], false)
     const first = hits[0]
-    return first && first.object.userData.track ? first.object.userData.track : null
+    if (!first) return null
+    if (first.object.userData.track) return { track: first.object.userData.track }
+    const local = t.earth.worldToLocal(first.point.clone())
+    return { point: latLonFromPoint([local.x, local.y, local.z]) }
   }
 
   function startDrag(event) {
@@ -254,8 +261,9 @@ export default function EarthGlobe({
   function stopDrag(event) {
     const moved = Math.abs(event.clientX - drag.current.x) + Math.abs(event.clientY - drag.current.y)
     if (drag.current.active && moved < 6 && event.type === "pointerup") {
-      const track = pickPin(event)
-      if (track) pinClick.current?.(track)
+      const hit = pickPin(event)
+      if (hit?.track) pinClick.current?.(hit.track)
+      else if (hit?.point) regionClick.current?.(hit.point)
     }
     drag.current.active = false
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {

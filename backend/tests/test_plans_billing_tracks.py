@@ -192,8 +192,9 @@ def test_upload_and_list(track, std, artist):
     assert any(t["id"] == track["id"] for t in mine)
 
 
-def test_list_forbidden_noplan(noplan):
-    assert requests.get(f"{BASE_URL}/api/tracks", headers=H(noplan)).status_code == 403
+def test_list_allowed_noplan(noplan):
+    # iteration 3: browsing (completed, no plan) users can list tracks for previews
+    assert requests.get(f"{BASE_URL}/api/tracks", headers=H(noplan)).status_code == 200
 
 
 def test_audio_stream(track, std, noplan):

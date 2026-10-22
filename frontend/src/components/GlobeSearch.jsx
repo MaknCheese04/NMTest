@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import Icon from "./Icon"
 import { findCountryLocation } from "@/lib/earthMaps"
+import { findStateLocation } from "@/lib/regions"
 import { API } from "@/lib/profile"
 
 export default function GlobeSearch({ onLocate }) {
@@ -12,7 +13,7 @@ export default function GlobeSearch({ onLocate }) {
 
   async function find(q) {
     const id = ++request.current
-    const country = findCountryLocation(q)
+    const country = findCountryLocation(q) || findStateLocation(q)
     if (country) {
       onLocate({ ...country, key: Date.now() })
       return setStatus(`Showing ${country.label}`)

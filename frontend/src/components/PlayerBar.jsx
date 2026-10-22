@@ -31,7 +31,7 @@ export default function PlayerBar() {
   const [expanded, setExpanded] = useState(false)
 
   const isPlaying = real ? player.isPlaying : demo.isPlaying
-  const duration = real ? (real.preview ? PREVIEW_SECONDS : player.duration) : DEMO_DURATION
+  const duration = real ? (real.preview ? (real.previewSeconds || PREVIEW_SECONDS) : player.duration) : DEMO_DURATION
   const progress = real ? Math.min(player.time, duration || 0) : demo.progress
   const togglePlay = real ? player.toggle : () => demo.setIsPlaying((p) => !p)
   const seek = real ? player.seek : demo.setProgress
@@ -51,7 +51,7 @@ export default function PlayerBar() {
           {cover ? <img src={cover} alt="Track cover" /> : <div className="mini-album-fallback">♪</div>}
         </div>
         <div className="track-heading">
-          <p data-testid="player-kicker">{real ? (real.preview ? `${PREVIEW_SECONDS}-second preview` : real.location || "New release") : "Worlds Between Us"}</p>
+          <p data-testid="player-kicker">{real ? (real.preview ? `${real.previewSeconds || PREVIEW_SECONDS}-second preview` : real.location || "New release") : "Worlds Between Us"}</p>
           <button className="expand-player-title" type="button" aria-expanded={expanded}
             data-testid="player-track-title" onClick={() => setExpanded(true)}>{real ? real.title : "Golden Moon"}</button>
           <a href="#artist" data-testid="player-artist-link">{real ? real.artist_name : "Maya Sol"}</a>
@@ -84,7 +84,7 @@ export default function PlayerBar() {
           <p className="player-kicker">Now playing</p>
           <h2>{real.title}</h2>
           <p className="lyrics-credit">{real.artist_name}{real.location ? ` · ${real.location}` : ""}</p>
-          {real.preview && <p className="lyrics-credit">Subscribe to Standard Listener to hear the full track.</p>}
+          {real.preview && !real.previewSeconds && <p className="lyrics-credit">Subscribe to Standard Listener to hear the full track.</p>}
         </div>
       )}
       {expanded && <ListenerComments />}

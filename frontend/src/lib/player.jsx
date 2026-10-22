@@ -49,6 +49,27 @@ export function PlayerProvider({ children }) {
     }
   }, [api, listener, track])
 
+  const playSong = useCallback(async (song) => {
+    const id = `it-${song.id}`
+    setError("")
+    if (!listener) return setError("Subscribe to Standard Listener to play songs.")
+    if (track?.id === id && audio.current?.src) {
+      if (audio.current.paused) { await audio.current.play() } else { audio.current.pause() }
+      return
+    }
+    release()
+    audio.current.src = song.preview_url
+    setTrack({ id, title: song.title, artist_name: song.artist, cover: song.artwork, preview: true,
+      previewSeconds: 30, location: "Apple Music preview" })
+    setTime(0)
+    try {
+      await audio.current.play()
+      window.dispatchEvent(new Event("nm-release-play"))
+    } catch {
+      setError("Couldn't play this preview.")
+    }
+  }, [listener, track])
+
   const toggle = useCallback(() => {
     if (!audio.current?.src) return
     if (audio.current.paused) audio.current.play()
@@ -57,7 +78,7 @@ export function PlayerProvider({ children }) {
 
   const seek = useCallback((t) => { if (audio.current) audio.current.currentTime = t }, [])
 
-  const value = { track, isPlaying, time, duration, loadingId, error, play, toggle, seek, listener }
+  const value = { track, isPlaying, time, duration, loadingId, error, play, playSong, toggle, seek, listener }
   return (
     <PlayerContext.Provider value={value}>
       <audio ref={audio} data-testid="release-audio"
