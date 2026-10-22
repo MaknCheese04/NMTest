@@ -1,9 +1,29 @@
 import { useEffect, useState } from "react"
-import { initials, useApi } from "@/lib/profile"
+import UpgradeCard from "./UpgradeCard"
+import { initials, useApi, useProfile } from "@/lib/profile"
 
 const dateFmt = new Intl.DateTimeFormat("en", { month: "short", day: "numeric" })
 
 export default function ListenerComments() {
+  const { profile } = useProfile()
+  if ((profile?.plan_level || 0) < 2) {
+    return (
+      <section className="listener-comments" data-testid="listener-comments">
+        <div className="comments-heading">
+          <div>
+            <p className="player-kicker">Listener room</p>
+            <h2>Comments</h2>
+          </div>
+        </div>
+        <UpgradeCard plan="Pro Listener" testId="comments-upgrade" title="Join the conversation"
+          text="Pro Listener ($9.99/mo) unlocks the commentary service: talk with other listeners and artists and comment on the music you hear." />
+      </section>
+    )
+  }
+  return <CommentsRoom />
+}
+
+function CommentsRoom() {
   const api = useApi()
   const [comments, setComments] = useState([])
   const [feedback, setFeedback] = useState("")

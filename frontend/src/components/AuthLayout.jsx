@@ -1,13 +1,13 @@
 import { Link, useNavigate } from "react-router-dom"
 import GlobeMark from "./GlobeMark"
 
-export default function AuthLayout({ mode = "login", title, backTo, children }) {
+export default function AuthLayout({ mode = "login", title, backTo, aside, footer, children }) {
   const navigate = useNavigate()
   const isCreate = mode === "create"
-  const back = backTo || (isCreate ? "/sign-in" : null)
+  const back = backTo === undefined ? (isCreate ? "/sign-in" : null) : backTo
 
   return (
-    <main className={`login-page ${isCreate ? "create-mode" : ""}`} data-testid={`auth-page-${mode}`}>
+    <main className={`login-page ${isCreate ? "create-mode" : ""} ${aside ? "with-aside" : ""}`} data-testid={`auth-page-${mode}`}>
       <section className="login-panel" aria-label="Account">
         {back && (
           <button className="account-back" type="button" data-testid="auth-back-button" onClick={() => navigate(back)}>
@@ -21,12 +21,17 @@ export default function AuthLayout({ mode = "login", title, backTo, children }) 
             <p className="eyebrow">Your music home</p>
             {title && <h1 data-testid="auth-title">{title}</h1>}
             <div className="clerk-slot">{children}</div>
+            {footer}
           </div>
         </div>
       </section>
-      <section className="brand-panel" aria-label="Explore the world through music">
-        <GlobeMark />
-        <p>Explore the World Through Music</p>
+      <section className={`brand-panel ${aside ? "plans-panel" : ""}`} aria-label={aside ? "Subscription plans" : "Explore the world through music"}>
+        {aside || (
+          <>
+            <GlobeMark />
+            <p>Explore the World Through Music</p>
+          </>
+        )}
       </section>
     </main>
   )

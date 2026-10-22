@@ -485,7 +485,7 @@ a:focus-visible {
     margin-top: 60px;
   }
 
-  button {
+  button:where(:not([class*="cl-"])) {
     margin-inline: 18px;
   }
 

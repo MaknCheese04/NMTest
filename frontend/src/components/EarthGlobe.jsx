@@ -81,28 +81,16 @@ export default function EarthGlobe({
 
     const boundaryGeometry = new LineSegmentsGeometry()
     boundaryGeometry.setPositions(createAdminBoundaryPositions())
-    const boundaryOutlineMaterial = new LineMaterial({
-      color: 0x321c05,
-      linewidth: 4.6,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-    })
     const boundaryMaterial = new LineMaterial({
-      color: 0xc4932c,
-      linewidth: 2.2,
+      color: 0x6b4a14,
+      linewidth: 0.9,
       transparent: true,
       opacity: 0,
       depthWrite: false,
     })
-    const boundaryOutline = new LineSegments2(
-      boundaryGeometry,
-      boundaryOutlineMaterial,
-    )
     const boundaryLines = new LineSegments2(boundaryGeometry, boundaryMaterial)
-    boundaryOutline.renderOrder = 3
     boundaryLines.renderOrder = 4
-    earth.add(boundaryOutline, boundaryLines)
+    earth.add(boundaryLines)
 
     const rim = new THREE.Mesh(
       new THREE.SphereGeometry(1.016, 128, 128),
@@ -129,7 +117,6 @@ export default function EarthGlobe({
     const resize = () => {
       const { width, height } = container.getBoundingClientRect()
       renderer.setSize(width, height, false)
-      boundaryOutlineMaterial.resolution.set(width, height)
       boundaryMaterial.resolution.set(width, height)
       camera.aspect = width / height
       camera.updateProjectionMatrix()
@@ -144,12 +131,12 @@ export default function EarthGlobe({
       earth.rotation.y += (rotation.current.y - earth.rotation.y) * 0.13
       camera.position.z += (cameraDistance.current - camera.position.z) * 0.12
       const boundaryOpacity = THREE.MathUtils.clamp(
-        (3.24 - camera.position.z) / 0.22,
+        (2.45 - camera.position.z) / 0.45,
         0,
         1,
       )
-      boundaryOutlineMaterial.opacity = boundaryOpacity
-      boundaryMaterial.opacity = boundaryOpacity
+      boundaryMaterial.opacity = boundaryOpacity * 0.9
+      boundaryLines.visible = boundaryOpacity > 0.01
       renderer.render(scene, camera)
       frame = window.requestAnimationFrame(render)
     }
@@ -163,7 +150,6 @@ export default function EarthGlobe({
       texture.dispose()
       bumpTexture.dispose()
       boundaryGeometry.dispose()
-      boundaryOutlineMaterial.dispose()
       boundaryMaterial.dispose()
       rim.geometry.dispose()
       rim.material.dispose()

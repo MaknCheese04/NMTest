@@ -14,41 +14,70 @@ export function useApi() {
     if (!res.ok) {
       let detail = "Something went wrong. Please try again."
       try { detail = (await res.json()).detail || detail } catch {}
-      throw new Error(typeof detail === "string" ? detail : "Please check the form and try again.")
+      const err = new Error(typeof detail === "string" ? detail : "Please check the form and try again.")
+      err.status = res.status
+      throw err
     }
     return res
   }, [getToken])
 }
 
-const ProfileContext = createContext({ profile: null, photoUrl: "", refresh: async () => {} })
+const ProfileContext = createContext({ profile: null, photoUrl: "", error: "", refresh: async () => {} })
 
 export function ProfileProvider({ children }) {
   const { isSignedIn, userId } = useAuth()
   const api = useApi()
   const [profile, setProfile] = useState(null)
   const [photoUrl, setPhotoUrl] = useState("")
+  const [error, setError] = useState("")
 
-  const refresh = useCallback(async () => {
-    const data = await (await api("/me")).json()
-    setProfile(data)
-    if (data.has_photo) {
+  const loadPhoto = useCallback(async (hasPhoto) => {
+    if (!hasPhoto) return setPhotoUrl("")
+    try {
       const blob = await (await api("/me/photo")).blob()
       setPhotoUrl((old) => { if (old) URL.revokeObjectURL(old); return URL.createObjectURL(blob) })
-    } else {
-      setPhotoUrl("")
-    }
-    return data
+    } catch {}
   }, [api])
 
+  const refresh = useCallback(async () => {
+    setError("")
+    try {
+      const data = await (await api("/me")).json()
+      setProfile(data)
+      loadPhoto(data.has_photo)
+      return data
+    } catch (e) {
+      setError("We couldn't load your account. Please try again.")
+      throw e
+    }
+  }, [api, loadPhoto])
+
   useEffect(() => {
-    if (isSignedIn) refresh().catch(() => setProfile({ completed: false }))
-    else { setProfile(null); setPhotoUrl("") }
+    if (isSignedIn) refresh().catch(() => {})
+    else { setProfile(null); setPhotoUrl(""); setError("") }
   }, [isSignedIn, userId, refresh])
 
-  return <ProfileContext.Provider value={{ profile, photoUrl, refresh }}>{children}</ProfileContext.Provider>
+  return <ProfileContext.Provider value={{ profile, photoUrl, error, refresh }}>{children}</ProfileContext.Provider>
 }
 
 export const useProfile = () => useContext(ProfileContext)
 
 export const initials = (name = "") =>
-  name.split(" ").filter(Boolean).map((p) => p[0]).join("").slice(0, 2).toUpperCase() || "NM"
+  name.split(/[\s._]+/).filter(Boolean).map((p) => p[0]).join("").slice(0, 2).toUpperCase() || "NM"
+
+const PLAN_KEY = "nm_plan"
+export const getSavedPlan = () => localStorage.getItem(PLAN_KEY) || "standard"
+export const savePlan = (plan) => localStorage.setItem(PLAN_KEY, plan)
+
+export function useCheckout() {
+  const api = useApi()
+  return useCallback(async (plan) => {
+    const res = await api("/payments/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan, origin_url: window.location.origin }),
+    })
+    const { checkout_url } = await res.json()
+    window.location.href = checkout_url
+  }, [api])
+}

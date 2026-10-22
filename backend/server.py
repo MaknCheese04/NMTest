@@ -1,34 +1,34 @@
 import logging
 import math
 import os
+import re
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Optional
 
 import requests
-from dotenv import load_dotenv
+import stripe
 from fastapi import APIRouter, Depends, FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
-from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.cors import CORSMiddleware
 
-load_dotenv(Path(__file__).parent / ".env")
-
 try:
+    from backend.deps import PLANS, client, db, plan_level, require_level
     from backend.clerk_auth import clerk_router, require_user
     from backend.storage import APP_NAME, get_object, init_storage, put_object
+    from backend.billing import payments_router
+    from backend.tracks import tracks_router
 except ModuleNotFoundError:
+    from deps import PLANS, client, db, plan_level, require_level
     from clerk_auth import clerk_router, require_user
     from storage import APP_NAME, get_object, init_storage, put_object
+    from billing import payments_router
+    from tracks import tracks_router
 
 logger = logging.getLogger("newmusiq")
 logging.basicConfig(level=logging.INFO)
-
-client = AsyncIOMotorClient(os.environ["MONGO_URL"])
-db = client[os.environ["DB_NAME"]]
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -36,6 +36,7 @@ api_router = APIRouter(prefix="/api")
 TRACK_KEY = "golden-moon"
 PHOTO_TYPES = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}
 MAX_PHOTO_BYTES = 5 * 1024 * 1024
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_.]{3,20}$")
 
 
 def now_iso() -> str:
@@ -45,12 +46,15 @@ def now_iso() -> str:
 class Profile(BaseModel):
     user_id: str
     email: str = ""
-    display_name: str = ""
+    username: str = ""
     country: str = ""
     state: str = ""
     zip_code: str = ""
     has_photo: bool = False
     completed: bool = False
+    plan: Optional[str] = None
+    plan_name: str = ""
+    plan_level: int = 0
 
 
 class Comment(BaseModel):
@@ -68,26 +72,26 @@ class CommentIn(BaseModel):
 def profile_out(doc: Optional[dict], user_id: str) -> Profile:
     if not doc:
         return Profile(user_id=user_id)
+    level = plan_level(doc)
+    plan = doc.get("plan") if level else None
     return Profile(
         user_id=user_id,
         email=doc.get("email", ""),
-        display_name=doc.get("display_name", ""),
+        username=doc.get("username") or doc.get("display_name", ""),
         country=doc.get("country", ""),
         state=doc.get("state", ""),
         zip_code=doc.get("zip_code", ""),
         has_photo=bool(doc.get("photo_path")),
         completed=bool(doc.get("completed")),
+        plan=plan,
+        plan_name=PLANS[plan]["name"] if plan else "",
+        plan_level=level,
     )
 
 
 def comment_out(doc: dict) -> Comment:
-    return Comment(
-        id=doc["id"],
-        display_name=doc["display_name"],
-        message=doc["message"],
-        created_at=doc["created_at"],
-        pending=doc["status"] == "pending",
-    )
+    return Comment(id=doc["id"], display_name=doc["display_name"], message=doc["message"],
+                   created_at=doc["created_at"], pending=doc["status"] == "pending")
 
 
 @api_router.get("/")
@@ -103,7 +107,7 @@ async def get_me(user: dict = Depends(require_user)):
 
 @api_router.put("/me", response_model=Profile)
 async def update_me(
-    display_name: str = Form(...),
+    username: str = Form(...),
     country: str = Form(...),
     state: str = Form(...),
     zip_code: str = Form(...),
@@ -111,15 +115,20 @@ async def update_me(
     photo: Optional[UploadFile] = File(None),
     user: dict = Depends(require_user),
 ):
-    fields = {k: v.strip() for k, v in {
-        "display_name": display_name, "country": country, "state": state, "zip_code": zip_code,
-    }.items()}
+    fields = {"username": username.strip(), "country": country.strip(), "state": state.strip(), "zip_code": zip_code.strip()}
     if not all(fields.values()):
         raise HTTPException(status_code=400, detail="Complete all fields to continue.")
-    if len(fields["display_name"]) > 60 or len(fields["zip_code"]) > 12:
+    if not USERNAME_RE.match(fields["username"]):
+        raise HTTPException(status_code=400, detail="Username must be 3-20 letters, numbers, dots or underscores.")
+    if len(fields["zip_code"]) > 12 or len(fields["country"]) > 80 or len(fields["state"]) > 80:
         raise HTTPException(status_code=400, detail="Some fields are too long.")
+    taken = await db.profiles.find_one(
+        {"username_lower": fields["username"].lower(), "user_id": {"$ne": user["user_id"]}}, {"_id": 1})
+    if taken:
+        raise HTTPException(status_code=409, detail="That username is taken. Try another one.")
 
-    update = {**fields, "email": email.strip()[:200], "completed": True, "updated_at": now_iso()}
+    update = {**fields, "username_lower": fields["username"].lower(), "display_name": fields["username"],
+              "email": email.strip()[:200], "completed": True, "updated_at": now_iso()}
     if photo is not None and photo.filename:
         if photo.content_type not in PHOTO_TYPES:
             raise HTTPException(status_code=400, detail="Photo must be PNG, JPG or WEBP.")
@@ -140,6 +149,35 @@ async def update_me(
     return profile_out(doc, user["user_id"])
 
 
+def _delete_clerk_user(user_id: str):
+    resp = requests.delete(f"https://api.clerk.com/v1/users/{user_id}", timeout=15,
+                           headers={"Authorization": f"Bearer {os.environ['CLERK_SECRET_KEY']}", "User-Agent": "newmusiq"})
+    if resp.status_code not in (200, 404):
+        resp.raise_for_status()
+
+
+@api_router.delete("/me")
+async def delete_me(user: dict = Depends(require_user)):
+    uid = user["user_id"]
+    doc = await db.profiles.find_one({"user_id": uid}, {"_id": 0}) or {}
+    if doc.get("subscription_id"):
+        try:
+            await run_in_threadpool(stripe.Subscription.cancel, doc["subscription_id"])
+        except stripe.error.StripeError as e:
+            if getattr(e, "code", "") != "resource_missing":
+                logger.error(f"Cancel on delete failed: {e}")
+                raise HTTPException(502, "We couldn't cancel your subscription. Please try again.")
+    await db.tracks.update_many({"user_id": uid}, {"$set": {"is_deleted": True}})
+    await db.comments.delete_many({"user_id": uid})
+    await db.profiles.delete_one({"user_id": uid})
+    try:
+        await run_in_threadpool(_delete_clerk_user, uid)
+    except requests.RequestException as e:
+        logger.error(f"Clerk delete failed for {uid}: {e}")
+        raise HTTPException(502, "Your data was removed but the login couldn't be deleted. Please try again.")
+    return {"ok": True}
+
+
 @api_router.get("/me/photo")
 async def get_my_photo(user: dict = Depends(require_user)):
     doc = await db.profiles.find_one({"user_id": user["user_id"]}, {"_id": 0})
@@ -151,28 +189,21 @@ async def get_my_photo(user: dict = Depends(require_user)):
 
 
 @api_router.get("/comments", response_model=list[Comment])
-async def list_comments(user: dict = Depends(require_user)):
-    query = {"track_key": TRACK_KEY, "$or": [{"status": "approved"}, {"user_id": user["user_id"], "status": "pending"}]}
+async def list_comments(profile: dict = Depends(require_level(2))):
+    query = {"track_key": TRACK_KEY, "$or": [{"status": "approved"}, {"user_id": profile["user_id"], "status": "pending"}]}
     docs = await db.comments.find(query, {"_id": 0}).sort("created_at", -1).to_list(20)
     return [comment_out(d) for d in docs]
 
 
 @api_router.post("/comments", response_model=Comment)
-async def create_comment(body: CommentIn, user: dict = Depends(require_user)):
+async def create_comment(body: CommentIn, profile: dict = Depends(require_level(2))):
     message = body.message.strip()
     if not message:
         raise HTTPException(status_code=400, detail="Write a comment before sending.")
-    profile = await db.profiles.find_one({"user_id": user["user_id"]}, {"_id": 0})
-    if not profile or not profile.get("display_name"):
-        raise HTTPException(status_code=400, detail="Finish your profile before commenting.")
     doc = {
-        "id": str(uuid.uuid4()),
-        "user_id": user["user_id"],
-        "display_name": profile["display_name"],
-        "message": message,
-        "track_key": TRACK_KEY,
-        "status": "pending",
-        "created_at": now_iso(),
+        "id": str(uuid.uuid4()), "user_id": profile["user_id"],
+        "display_name": profile.get("username") or profile.get("display_name") or "Listener",
+        "message": message, "track_key": TRACK_KEY, "status": "pending", "created_at": now_iso(),
     }
     await db.comments.insert_one(doc)
     return comment_out(doc)
@@ -206,7 +237,6 @@ async def geo_search(q: str = Query(..., min_length=2, max_length=120)):
         lon_span = min(raw_lon, 360 - raw_lon)
     except ValueError:
         lat_span = lon_span = 0
-    import math
     visible = max(lat_span, lon_span * math.cos(math.radians(lat)))
     distance = min(3.2, max(1.38, 1.35 + visible / 25))
     label = (m.get("display_name") or q).split(",")[0]
@@ -214,6 +244,8 @@ async def geo_search(q: str = Query(..., min_length=2, max_length=120)):
 
 
 app.include_router(api_router)
+app.include_router(tracks_router)
+app.include_router(payments_router)
 app.include_router(clerk_router)
 
 app.add_middleware(
@@ -228,7 +260,11 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup():
     await db.profiles.create_index("user_id", unique=True)
+    await db.profiles.create_index("username_lower", unique=True,
+                                   partialFilterExpression={"username_lower": {"$type": "string"}})
     await db.comments.create_index([("track_key", 1), ("created_at", -1)])
+    await db.tracks.create_index([("is_deleted", 1), ("created_at", -1)])
+    await db.payment_transactions.create_index("session_id", unique=True)
     try:
         await run_in_threadpool(init_storage)
         logger.info("Storage initialized")

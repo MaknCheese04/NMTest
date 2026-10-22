@@ -174,19 +174,6 @@ export function createEarthMaps() {
   colorContext.lineWidth = 1.35
   colorContext.stroke()
 
-  // A subtle base trace guarantees boundaries remain legible on close zoom.
-  colorContext.lineCap = "round"
-  colorContext.lineJoin = "round"
-  colorContext.beginPath()
-  colorPath(admin1LinesData)
-  colorContext.strokeStyle = "rgba(45, 25, 7, .82)"
-  colorContext.lineWidth = 4.2
-  colorContext.stroke()
-  colorContext.beginPath()
-  colorPath(admin1LinesData)
-  colorContext.strokeStyle = "rgba(191, 139, 40, .78)"
-  colorContext.lineWidth = 1.8
-  colorContext.stroke()
 
   colorContext.beginPath()
   colorPath(coastlines)
