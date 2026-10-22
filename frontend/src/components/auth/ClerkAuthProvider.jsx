@@ -14,7 +14,7 @@ const appearance = {
     colorInput: "#382610",
     colorInputForeground: "#fff7eb",
     colorBorder: "#5a4526",
-    fontFamily: "Manrope, sans-serif",
+    fontFamily: "Yanone Kaffeesatz, sans-serif", fontSize: "17px",
     borderRadius: "10px",
   },
 };

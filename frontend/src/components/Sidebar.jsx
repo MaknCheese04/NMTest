@@ -1,14 +1,17 @@
 import { useState } from "react"
+import { NavLink, useNavigate } from "react-router-dom"
 import Icon from "./Icon"
 import AccountMenu from "./AccountMenu"
 import { initials, useProfile } from "@/lib/profile"
 
-export const navItems = [
-  { label: "Search", icon: "search" },
-  { label: "Profile", icon: "profile" },
-  { label: "Artist Studio", icon: "studio" },
-  { label: "Settings", icon: "settings" },
-  { label: "Contact Us", icon: "contact" },
+const NAV = [
+  { label: "Explore", icon: "globe", to: "/" },
+  { label: "Search", icon: "search", to: "/search" },
+  { label: "Profile", icon: "profile", to: "/profile" },
+  { label: "Artist Studio", icon: "studio", to: "/studio" },
+  { label: "Settings", icon: "settings", to: "/settings" },
+  { label: "Admin", icon: "shield", to: "/admin", admin: true },
+  { label: "Contact Us", icon: "contact", to: "/contact" },
 ]
 
 const slug = (s) => s.toLowerCase().replace(/\s+/g, "-")
@@ -22,20 +25,21 @@ export function Avatar({ className = "profile-avatar", testId }) {
   )
 }
 
-export default function Sidebar({ activeNav, onNav }) {
+export default function Sidebar() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const { profile } = useProfile()
+  const { profile, role } = useProfile()
+  const navigate = useNavigate()
 
   return (
     <aside className="player-sidebar">
-      <button className="player-wordmark" type="button" data-testid="player-wordmark" onClick={() => onNav("Profile")}>NewMusiq</button>
+      <button className="player-wordmark" type="button" data-testid="player-wordmark" onClick={() => navigate("/")}>NewMusiq</button>
       <nav className="player-nav" aria-label="Main navigation">
-        {navItems.map((item) => (
-          <button key={item.label} type="button" className={activeNav === item.label ? "active" : ""}
-            data-testid={`nav-${slug(item.label)}`} onClick={() => onNav(item.label)}>
+        {NAV.filter((n) => !n.admin || role === "admin").map((item) => (
+          <NavLink key={item.label} to={item.to} end={item.to === "/"} className={({ isActive }) => (isActive ? "active" : "")}
+            data-testid={`nav-${slug(item.label)}`}>
             <Icon name={item.icon} />
             <span>{item.label}</span>
-          </button>
+          </NavLink>
         ))}
       </nav>
       <div className="sidebar-profile" data-testid="sidebar-profile">

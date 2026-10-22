@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import subprocess
@@ -16,9 +17,11 @@ from starlette.concurrency import run_in_threadpool
 try:
     from backend.deps import db, require_completed, require_level
     from backend.storage import APP_NAME, get_object, put_object
+    from backend.features import sync_track_lyrics
 except ModuleNotFoundError:
     from deps import db, require_completed, require_level
     from storage import APP_NAME, get_object, put_object
+    from features import sync_track_lyrics
 
 tracks_router = APIRouter(prefix="/api/tracks")
 logger = logging.getLogger("newmusiq.tracks")
@@ -42,12 +45,18 @@ class Track(BaseModel):
     mine: bool
     lat: Optional[float] = None
     lon: Optional[float] = None
+    featured: str = ""
+    release_type: str = "single"
+    album_title: str = ""
+    has_lyrics: bool = False
 
 
 def track_out(doc: dict, user_id: str) -> Track:
     return Track(id=doc["id"], title=doc["title"], artist_name=doc["artist_name"], location=doc.get("location", ""),
                  has_cover=bool(doc.get("cover_path")), created_at=doc["created_at"], mine=doc["user_id"] == user_id,
-                 lat=doc.get("lat"), lon=doc.get("lon"))
+                 lat=doc.get("lat"), lon=doc.get("lon"), featured=doc.get("featured", ""),
+                 release_type=doc.get("release_type", "single"), album_title=doc.get("album_title", ""),
+                 has_lyrics=bool(doc.get("synced_lyrics") or doc.get("lyrics")))
 
 
 def geocode(q: str):
@@ -103,6 +112,10 @@ async def _store(file: UploadFile, types: dict, limit: int, kind: str, user_id: 
 async def upload_track(
     title: str = Form(...),
     location: str = Form(""),
+    featured: str = Form(""),
+    lyrics: str = Form(""),
+    release_type: str = Form("single"),
+    album_title: str = Form(""),
     lat: Optional[float] = Form(None),
     lon: Optional[float] = Form(None),
     audio: UploadFile = File(...),
@@ -112,6 +125,15 @@ async def upload_track(
     title = title.strip()
     if not title or len(title) > 100:
         raise HTTPException(400, "Give your track a title (max 100 characters).")
+    if release_type not in ("single", "album"):
+        raise HTTPException(400, "Release type must be single or album.")
+    if release_type == "album" and not album_title.strip():
+        raise HTTPException(400, "Give the album a title.")
+    if len(lyrics) > 20000:
+        raise HTTPException(400, "Lyrics are too long.")
+    await audio.seek(0)
+    audio_bytes = await audio.read()
+    await audio.seek(0)
     audio_path, audio_type = await _store(audio, AUDIO_TYPES, MAX_AUDIO, "audio", profile["user_id"])
     doc = {
         "id": str(uuid.uuid4()), "user_id": profile["user_id"],
@@ -119,6 +141,8 @@ async def upload_track(
         "title": title, "location": location.strip()[:120],
         "audio_path": audio_path, "audio_type": audio_type, "cover_path": None, "cover_type": None,
         "is_deleted": False, "created_at": datetime.now(timezone.utc).isoformat(),
+        "featured": featured.strip()[:200], "release_type": release_type, "album_title": album_title.strip()[:120],
+        "lyrics": lyrics.strip(), "lyrics_status": "processing" if lyrics.strip() else "none", "synced_lyrics": [],
     }
     if cover is not None and cover.filename:
         doc["cover_path"], doc["cover_type"] = await _store(cover, IMAGE_TYPES, MAX_IMAGE, "cover", profile["user_id"])
@@ -130,6 +154,8 @@ async def upload_track(
         await ensure_preview(doc)
     except HTTPException:
         pass
+    if doc["lyrics"]:
+        asyncio.create_task(sync_track_lyrics(doc["id"], audio_bytes, AUDIO_TYPES[audio_type], doc["lyrics"]))
     return track_out(doc, profile["user_id"])
 
 
@@ -157,6 +183,12 @@ async def track_audio(track_id: str, profile: dict = Depends(require_level(1))):
     doc = await _get(track_id)
     data, ctype = await run_in_threadpool(get_object, doc["audio_path"])
     return Response(content=data, media_type=doc.get("audio_type") or ctype)
+
+
+@tracks_router.get("/{track_id}/lyrics")
+async def track_lyrics(track_id: str, profile: dict = Depends(require_completed)):
+    doc = await _get(track_id)
+    return {"status": doc.get("lyrics_status", "none"), "lines": doc.get("synced_lyrics") or []}
 
 
 @tracks_router.get("/{track_id}/preview")

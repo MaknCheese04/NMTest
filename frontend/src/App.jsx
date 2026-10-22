@@ -6,7 +6,14 @@ import ProfileSetup from "@/components/ProfileSetup"
 import Subscribe from "@/components/Subscribe"
 import { PaymentCancel, PaymentSuccess } from "@/components/PaymentResult"
 import PlayerScreen from "@/components/PlayerScreen"
-import AdminPage from "@/components/AdminPage"
+import GlobeHome from "@/components/GlobeHome"
+import SearchScreen from "@/components/screens/SearchScreen"
+import ProfileScreen from "@/components/screens/ProfileScreen"
+import StudioScreen from "@/components/screens/StudioScreen"
+import UploadScreen from "@/components/screens/UploadScreen"
+import SettingsScreen from "@/components/screens/SettingsScreen"
+import AdminScreen from "@/components/screens/AdminScreen"
+import ContactScreen from "@/components/screens/ContactScreen"
 import { ProfileProvider, useProfile } from "@/lib/profile"
 
 function Protected({ children }) {
@@ -53,6 +60,9 @@ function Home() {
   return <PlayerScreen />
 }
 
+const SCREENS = [["search", SearchScreen], ["profile", ProfileScreen], ["studio", StudioScreen], ["studio/upload", UploadScreen],
+  ["settings", SettingsScreen], ["admin", AdminScreen], ["contact", ContactScreen]]
+
 function SubscribeRoute() {
   const { profile } = useProfile()
   if (!profile.completed) return <Navigate to="/complete-profile" replace />
@@ -73,8 +83,10 @@ export default function App() {
             <Route path="/subscribe" element={guard(<SubscribeRoute />)} />
             <Route path="/payment/success" element={<Protected><PaymentSuccess /></Protected>} />
             <Route path="/payment/cancel" element={<Protected><PaymentCancel /></Protected>} />
-            <Route path="/admin" element={guard(<AdminPage />)} />
-            <Route path="/" element={guard(<Home />)} />
+            <Route path="/" element={guard(<Home />)}>
+              <Route index element={<GlobeHome />} />
+              {SCREENS.map(([path, C]) => <Route key={path} path={path} element={<C />} />)}
+            </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </ProfileProvider>

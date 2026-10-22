@@ -38,7 +38,8 @@ export function PlayerProvider({ children }) {
       release()
       urls.current = [src, cover].filter(Boolean)
       audio.current.src = src
-      setTrack({ ...t, cover, preview })
+      setTrack({ ...t, cover, preview, item: { kind: "track", ref_id: t.id, title: t.title, artist: t.artist_name, artwork: "", preview_url: "" } })
+      api(`/tracks/${t.id}/play`, { method: "POST" }).catch(() => {})
       setTime(0)
       await audio.current.play()
       window.dispatchEvent(new Event("nm-release-play"))
@@ -60,7 +61,8 @@ export function PlayerProvider({ children }) {
     release()
     audio.current.src = song.preview_url
     setTrack({ id, title: song.title, artist_name: song.artist, cover: song.artwork, preview: true,
-      previewSeconds: 30, location: "Apple Music preview" })
+      previewSeconds: 30, location: "Apple Music preview",
+      item: { kind: "song", ref_id: String(song.id), title: song.title, artist: song.artist, artwork: song.artwork || "", preview_url: song.preview_url || "" } })
     setTime(0)
     try {
       await audio.current.play()

@@ -1,7 +1,7 @@
-@import url("https://fonts.googleapis.com/css2?family=Archivo+Black&family=Manrope:wght@500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Pacifico&family=Yanone+Kaffeesatz:wght@300;400;500;600;700&display=swap");
 
 :root {
-  font-family: "Manrope", sans-serif;
+  font-family: "Yanone Kaffeesatz", sans-serif;
   color: #f7eddc;
   background: #07080c;
   font-synthesis: none;
@@ -103,7 +103,7 @@ input:where(:not([class*="cl-"])) {
 
 .wordmark {
   display: inline-block;
-  font-family: "Archivo Black", sans-serif;
+  font-family: "Yanone Kaffeesatz", sans-serif;
   font-size: clamp(56px, 5vw, 82px);
   font-weight: 400;
   letter-spacing: -0.09em;
@@ -148,7 +148,7 @@ label:where(:not([class*="cl-"])) {
 h1:where(:not([class*="cl-"])) {
   margin: 0 0 30px;
   color: #f8ecdc;
-  font-family: "Archivo Black", sans-serif;
+  font-family: "Yanone Kaffeesatz", sans-serif;
   font-size: clamp(21px, 2vw, 28px);
   font-weight: 400;
   letter-spacing: -0.035em;
@@ -336,7 +336,7 @@ a:focus-visible {
   z-index: 2;
   margin: -8px 0 0;
   color: #ead6f0;
-  font-family: "Archivo Black", sans-serif;
+  font-family: "Yanone Kaffeesatz", sans-serif;
   font-size: clamp(21px, 2.1vw, 30px);
   font-weight: 400;
   letter-spacing: -0.025em;
@@ -537,7 +537,7 @@ a:focus-visible {
   height: auto;
   margin: 0 0 82px;
   padding: 0;
-  font-family: "Archivo Black", sans-serif;
+  font-family: "Yanone Kaffeesatz", sans-serif;
   font-size: clamp(30px, 3vw, 44px);
   font-weight: 400;
   letter-spacing: -0.09em;
@@ -563,7 +563,7 @@ a:focus-visible {
   gap: 9px;
 }
 
-.player-nav button {
+.player-nav :is(button, a) {
   display: flex;
   gap: 16px;
   align-items: center;
@@ -581,7 +581,7 @@ a:focus-visible {
   box-shadow: none;
 }
 
-.player-nav button:hover {
+.player-nav :is(button, a):hover {
   color: var(--cream);
   background: rgb(255 255 255 / 4%);
   box-shadow: none;
@@ -589,13 +589,13 @@ a:focus-visible {
   transform: none;
 }
 
-.player-nav button.active {
+.player-nav :is(button, a).active {
   color: var(--cream);
   background: linear-gradient(90deg, rgb(229 183 86 / 17%), rgb(229 183 86 / 3%));
   border-color: rgb(229 183 86 / 18%);
 }
 
-.player-nav button.active::before {
+.player-nav :is(button, a).active::before {
   position: absolute;
   left: 0;
   width: 3px;
@@ -903,7 +903,7 @@ a:focus-visible {
   right: 22px;
   bottom: 19px;
   color: rgb(255 246 231 / 83%);
-  font-family: "Archivo Black", sans-serif;
+  font-family: "Yanone Kaffeesatz", sans-serif;
   font-size: 18px;
   letter-spacing: -0.08em;
 }
@@ -1072,7 +1072,7 @@ a:focus-visible {
 .lyrics-heading h2 {
   margin: 0;
   color: var(--cream);
-  font-family: "Archivo Black", sans-serif;
+  font-family: "Yanone Kaffeesatz", sans-serif;
   font-size: clamp(30px, 4vw, 50px);
   font-weight: 400;
   letter-spacing: -0.055em;
@@ -1099,7 +1099,7 @@ a:focus-visible {
 .lyrics-lines p {
   margin: 0 0 19px;
   color: rgb(247 237 220 / 20%);
-  font-family: "Archivo Black", sans-serif;
+  font-family: "Yanone Kaffeesatz", sans-serif;
   font-size: clamp(18px, 2vw, 27px);
   font-weight: 400;
   letter-spacing: -0.025em;
@@ -1168,12 +1168,12 @@ a:focus-visible {
     width: 100%;
   }
 
-  .player-nav button {
+  .player-nav :is(button, a) {
     justify-content: center;
     padding: 0;
   }
 
-  .player-nav button span,
+  .player-nav :is(button, a) span,
   .sidebar-profile > div:not(.profile-avatar),
   .sidebar-profile button {
     display: none;
@@ -1219,12 +1219,12 @@ a:focus-visible {
     justify-content: space-around;
   }
 
-  .player-nav button {
+  .player-nav :is(button, a) {
     width: 52px;
     height: 52px;
   }
 
-  .player-nav button.active::before {
+  .player-nav :is(button, a).active::before {
     top: 0;
     left: auto;
     width: 25px;
@@ -1581,7 +1581,7 @@ a:focus-visible {
   padding: 0;
   overflow: hidden;
   color: var(--cream);
-  font-family: "Archivo Black", sans-serif;
+  font-family: "Yanone Kaffeesatz", sans-serif;
   font-size: 18px;
   font-weight: 400;
   letter-spacing: -0.035em;
@@ -1725,7 +1725,7 @@ a:focus-visible {
 .comments-heading h2 {
   margin: 0;
   color: var(--cream);
-  font-family: "Archivo Black", sans-serif;
+  font-family: "Yanone Kaffeesatz", sans-serif;
   font-size: clamp(27px, 3vw, 39px);
   font-weight: 400;
   letter-spacing: -0.055em;

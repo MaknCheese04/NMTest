@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useApi } from "@/lib/profile"
 import { usePlayer } from "@/lib/player"
 
-function Cover({ track }) {
+export function Cover({ track }) {
   const api = useApi()
   const [url, setUrl] = useState("")
   useEffect(() => {

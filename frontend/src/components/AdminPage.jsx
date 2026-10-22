@@ -5,7 +5,7 @@ import { useApi, useProfile } from "@/lib/profile"
 const TABS = ["pending", "approved", "hidden"]
 const dateFmt = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
 
-function Comments() {
+export function Comments() {
   const api = useApi()
   const [tab, setTab] = useState("pending")
   const [items, setItems] = useState(null)
@@ -47,7 +47,7 @@ function Comments() {
   )
 }
 
-function Users() {
+export function Users() {
   const api = useApi()
   const [data, setData] = useState(null)
   const [error, setError] = useState("")

@@ -3,6 +3,21 @@ import Icon from "./Icon"
 import Lyrics from "./Lyrics"
 import ListenerComments from "./ListenerComments"
 import { PREVIEW_SECONDS, usePlayer } from "@/lib/player"
+import { AddToPlaylist, LikeButton } from "./SongItem"
+import { useApi } from "@/lib/profile"
+
+function SyncedLyrics({ trackId, time }) {
+  const api = useApi()
+  const [data, setData] = useState(null)
+  useEffect(() => { api(`/tracks/${trackId}/lyrics`).then((r) => r.json()).then(setData).catch(() => {}) }, [api, trackId])
+  if (!data?.lines?.length) return null
+  const active = data.lines.reduce((a, l, i) => (l.t <= time ? i : a), -1)
+  return (
+    <div className="lyrics-lines" data-testid="synced-lyrics">
+      {data.lines.map((l, i) => <p key={i} className={i === active ? "active" : i < active ? "passed" : ""}>{l.text}</p>)}
+    </div>
+  )
+}
 
 const DEMO_DURATION = 238
 const DEMO_COVER = "https://images.unsplash.com/photo-1706512199237-06867557fb85?auto=format&fit=crop&w=500&q=88"
@@ -29,6 +44,11 @@ export default function PlayerBar() {
   const real = player.track
   const demo = useDemo(!real)
   const [expanded, setExpanded] = useState(false)
+  useEffect(() => {
+    const open = () => setExpanded(true)
+    window.addEventListener("nm-open-player", open)
+    return () => window.removeEventListener("nm-open-player", open)
+  }, [])
 
   const isPlaying = real ? player.isPlaying : demo.isPlaying
   const duration = real ? (real.preview ? (real.previewSeconds || PREVIEW_SECONDS) : player.duration) : DEMO_DURATION
@@ -56,6 +76,7 @@ export default function PlayerBar() {
             data-testid="player-track-title" onClick={() => setExpanded(true)}>{real ? real.title : "Golden Moon"}</button>
           <a href="#artist" data-testid="player-artist-link">{real ? real.artist_name : "Maya Sol"}</a>
         </div>
+        {real?.item && <div className="bar-actions" onClick={(e) => e.stopPropagation()}><LikeButton item={real.item} /><AddToPlaylist item={real.item} /></div>}
       </div>
       <div className="transport">
         <button type="button" aria-label="Restart track" data-testid="player-prev-button" onClick={() => seek(0)}>
@@ -84,6 +105,7 @@ export default function PlayerBar() {
           <p className="player-kicker">Now playing</p>
           <h2>{real.title}</h2>
           <p className="lyrics-credit">{real.artist_name}{real.location ? ` · ${real.location}` : ""}</p>
+          {real.item?.kind === "track" && <SyncedLyrics trackId={real.id} time={player.time} />}
           {real.preview && !real.previewSeconds && <p className="lyrics-credit">Subscribe to Standard Listener to hear the full track.</p>}
         </div>
       )}

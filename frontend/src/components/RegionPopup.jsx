@@ -2,6 +2,8 @@ import { useEffect, useState } from "react"
 import { useApi } from "@/lib/profile"
 import { usePlayer } from "@/lib/player"
 import { regionPattern } from "@/lib/patterns"
+import { LikeButton, AddToPlaylist } from "./SongItem"
+import { itemFromSong } from "@/lib/library"
 
 const fmtDuration = (ms) => { const s = Math.round((ms || 0) / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` }
 
@@ -51,6 +53,8 @@ function SongView({ songId, country }) {
           <button type="button" disabled={!song.preview_url} onClick={() => player.playSong(song)} data-testid="region-song-play">
             {current && player.isPlaying ? "Pause" : song.preview_url ? "Play preview" : "No preview"}
           </button>
+          <LikeButton item={itemFromSong(song)} />
+          <AddToPlaylist item={itemFromSong(song)} />
           {song.apple_url && <a href={song.apple_url} target="_blank" rel="noreferrer" data-testid="region-song-apple">Open in Apple Music</a>}
         </div>
         {player.error && <p className="status" data-testid="region-play-error">{player.error}</p>}
@@ -136,7 +140,11 @@ export default function RegionPopup({ region, onClose }) {
   const openSong = (song) => push({ type: "song", id: song.id })
   const pattern = regionPattern(region.country, region.state)
 
-  useEffect(() => { setStack([]) }, [params])
+  const api = useApi()
+  useEffect(() => {
+    setStack([])
+    api("/me/visits", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ country: region.country, state: region.state }) }).catch(() => {})
+  }, [params]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose() }
     window.addEventListener("keydown", onKey)
