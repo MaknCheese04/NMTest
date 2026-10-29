@@ -23,3 +23,10 @@ logs/
 /.opencode-skills/
 scripts/.u1.json
 scripts/.u2.json
+.env
+.env.*
+*.env
+credentials.json
+*.pem
+*.key
+.credentials

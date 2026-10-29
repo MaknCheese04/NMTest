@@ -30,7 +30,7 @@ function SongRow({ song, rank, onOpen }) {
     <button type="button" className="rp-song" onClick={() => onOpen(song)} data-testid="region-song">
       {rank && <span className="rp-rank">{rank}</span>}
       <span className="rp-art-fallback">▶</span>
-      <span className="rp-song-text"><strong>{song.title || "Top song"}</strong><em>{song.artist}{song.genre ? ` · ${song.genre}` : ""}</em></span>
+      <span className="rp-song-text"><strong>{song.title || "Top song"}</strong><em>{song.artist}{song.local_tie ? ` · ${song.local_tie}` : song.genre ? ` · ${song.genre}` : ""}</em></span>
     </button>
   )
 }

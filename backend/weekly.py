@@ -17,10 +17,22 @@ except ModuleNotFoundError:
 
 weekly_router = APIRouter(prefix="/api/music")
 _locks: dict = {}
-PROMPT = """You are a music chart researcher. For the region "{region}", list what people there are listening to most this week ({week}).
+TOP_N = 15
+MAX_SHARED = 3
+PROMPT = """You are a music chart researcher. Build the "Top Songs" list for "{region}" for this week ({week}).
+This list must feel unique to {region} - a listener from a neighbouring place should not get the same list.
+Rules for top_songs (25 items, ranked, all real songs that exist):
+- About 2/3 by artists born in, raised in, or strongly tied to {region} (current names and local legends), plus regional scenes and sounds big there.
+- About 1/3 current songs that are especially popular in {region} right now (local radio, streaming, local scene), not just the national Top 10.
+- At most 3 songs that are generic national/global hits.
+- Mix eras: include several songs from the last 5 years by artists from {region}, not only classics.
+- Accuracy matters most: only say an artist is from {region} if you are certain (check birthplace/hometown); local_tie must be true.
+- Do NOT use these songs, already used for other places this week: {avoid}
+Artists from {region} according to Wikipedia (use the well-known ones; do not invent): {artists}
+Signature local sounds: {heritage}
 Return ONLY JSON:
-{{"top_songs": [{{"title": str, "artist": str, "genre": str}}] (15 items, real popular songs, mix of current hits and local favourites),
- "top_genres": [{{"name": str, "description": str (one sentence), "songs": [{{"title": str, "artist": str}}] (8 real songs of that genre, prefer artists from or popular in the region)}}] (5 genres, most popular first)}}"""
+{{"top_songs": [{{"title": str, "artist": str, "genre": str, "local_tie": str (a few words, e.g. "Houston rapper" or "huge on Austin radio")}}],
+ "top_genres": [{{"name": str, "description": str (one sentence about this genre in {region}), "songs": [{{"title": str, "artist": str}}] (8 real songs, prefer artists from {region})}}] (5 genres, most popular in {region} first)}}"""
 
 
 def week_id() -> str:
@@ -28,11 +40,47 @@ def week_id() -> str:
     return f"{y}-W{w:02d}"
 
 
-async def ask_llm(region: str) -> dict:
+def song_key(s: dict) -> str:
+    return f"{re.sub(r'[^a-z0-9]', '', s.get('artist', '').lower())}|{re.sub(r'[^a-z0-9]', '', s.get('title', '').lower())}"
+
+
+def wiki_artists(place: str) -> list:
+    names: list = []
+    for cat in (f"Singers from {place}", f"Rappers from {place}", f"Musical groups from {place}",
+                f"Country musicians from {place}", f"Musicians from {place}"):
+        try:
+            r = requests.get("https://en.wikipedia.org/w/api.php", timeout=8, headers={"User-Agent": "NewMusiq/1.0 (music discovery app)"},
+                             params={"action": "query", "list": "categorymembers", "cmtitle": f"Category:{cat}",
+                                     "cmtype": "page", "cmlimit": 120, "format": "json"})
+            names += [re.sub(r"\s*\(.*?\)", "", m["title"]) for m in r.json().get("query", {}).get("categorymembers", [])]
+        except (requests.RequestException, ValueError):
+            continue
+    return list(dict.fromkeys(names))[:220]
+
+
+async def used_elsewhere(region_key: str) -> dict:
+    counts: dict = {}
+    async for d in db.region_weekly.find({"week": week_id(), "region_key": {"$ne": region_key}}, {"_id": 0, "top_songs": 1}):
+        for s in d.get("top_songs", []):
+            counts.setdefault(song_key(s), s)
+    return counts
+
+
+async def ask_llm(region: str, region_key: str = "") -> dict:
+    try:
+        from backend.regional_genres import GENRES, REGIONS
+    except ModuleNotFoundError:
+        from regional_genres import GENRES, REGIONS
+    place = region.split(",")[0].strip()
+    artists = await run_in_threadpool(wiki_artists, place)
+    used = await used_elsewhere(region_key)
+    heritage = "; ".join(f"{GENRES[g][0]} ({', '.join(f'{a} - {t}' for a, t in songs)})" for g, songs in REGIONS.get(region_key, [])) or "n/a"
+    avoid = "; ".join(f"{s['artist']} - {s['title']}" for s in list(used.values())[-150:]) or "none"
+    text = PROMPT.format(region=region, week=week_id(), avoid=avoid, artists=", ".join(artists) or "n/a", heritage=heritage)
     chat = LlmChat(api_key=os.environ.get("EMERGENT_LLM_KEY"), session_id=f"weekly-{uuid.uuid4()}",
-                   system_message="You answer with strict JSON only.").with_model("openai", "gpt-5.4-mini")
+                   system_message="You answer with strict JSON only.").with_model("openai", "gpt-5.5")
     out = ""
-    async for ev in chat.stream_message(UserMessage(text=PROMPT.format(region=region, week=week_id()))):
+    async for ev in chat.stream_message(UserMessage(text=text)):
         if isinstance(ev, TextDelta):
             out += ev.content
         elif isinstance(ev, StreamDone):
@@ -40,8 +88,19 @@ async def ask_llm(region: str) -> dict:
     match = re.search(r"\{.*\}", out, re.S)
     data = json.loads(match.group(0)) if match else {}
     clean = lambda s: {"title": str(s.get("title", ""))[:120], "artist": str(s.get("artist", ""))[:120]}
+    top, seen, shared = [], set(), 0
+    for s in data.get("top_songs", []):
+        k = song_key(s)
+        if not s.get("title") or k in seen:
+            continue
+        if k in used:
+            if shared >= MAX_SHARED:
+                continue
+            shared += 1
+        seen.add(k)
+        top.append({**clean(s), "genre": str(s.get("genre", ""))[:40], "local_tie": str(s.get("local_tie", ""))[:60]})
     return {
-        "top_songs": [{**clean(s), "genre": str(s.get("genre", ""))[:40]} for s in data.get("top_songs", [])[:20] if s.get("title")],
+        "top_songs": top[:TOP_N],
         "top_genres": [{"name": str(g.get("name", ""))[:40], "description": str(g.get("description", ""))[:240],
                         "songs": [clean(s) for s in g.get("songs", [])[:10] if s.get("title")]}
                        for g in data.get("top_genres", [])[:6] if g.get("name")],
@@ -59,7 +118,7 @@ async def weekly_lists(region_key: str, label: str) -> dict:
         if doc and doc.get("week") == wk:
             return doc
         try:
-            data = await ask_llm(label)
+            data = await ask_llm(label, region_key)
         except Exception:
             data = None
         if not data or not data["top_songs"]:
