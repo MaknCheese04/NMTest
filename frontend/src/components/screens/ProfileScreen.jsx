@@ -113,7 +113,7 @@ export default function ProfileScreen() {
 
   return (
     <Screen kicker="Your library" title={profile?.username || "Profile"} testId="profile-screen"
-      actions={<div className="profile-head-meta"><Avatar className="profile-avatar big" /><span>{profile?.plan_name || "Browsing"}</span></div>}>
+      actions={<div className="profile-head-meta"><Avatar className="profile-avatar big" /><span>{profile?.plan_name || "No plan"}</span></div>}>
       <Playlists />
       <section className="screen-section" data-testid="profile-places">
         <h2>Most visited places</h2>

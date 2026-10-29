@@ -81,3 +81,8 @@ User choices: real accounts (sign up / log in), land on the existing home page a
 - Google enabled on Clerk (sign_in ["email","google"]). Apple sign-in NOT available with managed auth.
 - Search screen: search bar back on the left, slimmer (36px), mode buttons left-aligned.
 - Pending: hum/melody matching not real yet; last round (Liked Songs playlist, playlist modal, upload order) not fully tested.
+
+## 2026-06 Plans + sign-in extras
+- Free "just browsing" option removed (PlanPicker, Subscribe, ProfileSetup); /api/me/browse removed; profile.browsing always false, so existing browsing users are sent to /subscribe.
+- Sign-in: show/hide password eye (signin-password-toggle); Remember me checkbox (default on). Unticked -> localStorage nm-forget-me + session cookie nm_alive; RememberGuard (lib/remember.jsx) signs out once the browser is closed.
+- Hum matching: user chose to skip for now (needs a recognition service such as ACRCloud).

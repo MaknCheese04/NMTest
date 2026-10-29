@@ -46,7 +46,7 @@ export default function Sidebar() {
         <Avatar testId="sidebar-avatar" />
         <div>
           <strong data-testid="sidebar-display-name">{profile?.username}</strong>
-          <span data-testid="sidebar-plan-name">{profile?.plan_name || (profile?.browsing ? "Browsing" : "Listener")}</span>
+          <span data-testid="sidebar-plan-name">{profile?.plan_name || "Listener"}</span>
         </div>
         <button type="button" aria-label="More account options" aria-expanded={menuOpen}
           data-testid="account-menu-button" onClick={() => setMenuOpen((o) => !o)}>

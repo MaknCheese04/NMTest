@@ -1398,3 +1398,9 @@ input[type="range"] { accent-color: #e3b14c; }
 .nm-signin .nm-social { display: flex; align-items: center; justify-content: center; gap: 10px; height: 46px; margin: 0; color: #f7eddc; background: transparent; border: 1px solid rgb(244 232 213 / 30%); box-shadow: none; }
 .nm-signin .nm-social:hover { background: rgb(255 255 255 / 5%); }
 .nm-signin .nm-signin-back { align-self: center; margin-top: 14px; font-size: 14px; }
+.nm-pw { position: relative; }
+.nm-pw input { width: 100%; padding-right: 48px; }
+.nm-signin .nm-pw-eye { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 38px; height: 38px; margin: 0; padding: 0; color: #e9dcc6; background: transparent; border: 0; border-radius: 8px; box-shadow: none; }
+.nm-signin .nm-pw-eye:hover { color: #f2d689; background: rgb(255 255 255 / 6%); transform: none; }
+.nm-signin .nm-remember { display: flex; align-items: center; gap: 10px; margin: -4px 0 16px; cursor: pointer; text-transform: none; }
+.nm-signin .nm-remember input { width: 18px; height: 18px; margin: 0; accent-color: #e3b14c; }

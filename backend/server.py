@@ -97,7 +97,7 @@ def profile_out(doc: Optional[dict], user_id: str) -> Profile:
         plan=plan,
         plan_name=PLANS[plan]["name"] if plan else "",
         plan_level=level,
-        browsing=bool(doc.get("browsing")) and not level,
+        browsing=False,
     )
 
 
@@ -190,13 +190,6 @@ async def delete_me(user: dict = Depends(require_user)):
     return {"ok": True}
 
 
-@api_router.post("/me/browse", response_model=Profile)
-async def start_browsing(user: dict = Depends(require_user)):
-    result = await db.profiles.update_one({"user_id": user["user_id"], "completed": True}, {"$set": {"browsing": True}})
-    if result.matched_count == 0:
-        raise HTTPException(status_code=400, detail="Finish your profile first.")
-    doc = await db.profiles.find_one({"user_id": user["user_id"]}, {"_id": 0})
-    return profile_out(doc, user["user_id"])
 
 
 @api_router.get("/me/photo")

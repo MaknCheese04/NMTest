@@ -15,6 +15,7 @@ import SettingsScreen from "@/components/screens/SettingsScreen"
 import AdminScreen from "@/components/screens/AdminScreen"
 import ContactScreen from "@/components/screens/ContactScreen"
 import { ProfileProvider, useProfile } from "@/lib/profile"
+import { RememberGuard } from "@/lib/remember"
 
 function Protected({ children }) {
   return (
@@ -56,7 +57,7 @@ function WithProfile({ children }) {
 function Home() {
   const { profile } = useProfile()
   if (!profile.completed) return <Navigate to="/complete-profile" replace />
-  if (!profile.plan_level && !profile.browsing) return <Navigate to="/subscribe" replace />
+  if (!profile.plan_level) return <Navigate to="/subscribe" replace />
   return <PlayerScreen />
 }
 
@@ -75,6 +76,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <ClerkAuthProvider>
+        <RememberGuard />
         <ProfileProvider>
           <Routes>
             <Route path="/sign-in/*" element={<SignedOutOnly><SignInPage /></SignedOutOnly>} />

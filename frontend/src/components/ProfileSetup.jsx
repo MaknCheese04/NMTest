@@ -27,7 +27,7 @@ export default function ProfileSetup() {
   const [status, setStatus] = useState("")
   const [saving, setSaving] = useState(false)
   const editing = Boolean(profile?.completed)
-  const needsPlan = !profile?.plan_level && !profile?.browsing
+  const needsPlan = !profile?.plan_level
 
   useEffect(() => {
     if (profile) setValues((v) => ({ ...v, ...Object.fromEntries(FIELDS.map((f) => [f.id, profile[f.id] || v[f.id]])) }))
@@ -53,12 +53,6 @@ export default function ProfileSetup() {
     try {
       await api("/me", { method: "PUT", body })
       await refresh()
-      if (needsPlan && plan === "browse") {
-        await api("/me/browse", { method: "POST" })
-        await refresh()
-        navigate("/", { replace: true })
-        return
-      }
       if (needsPlan) {
         setStatus("Taking you to secure checkout...")
         await checkout(plan)
@@ -104,7 +98,7 @@ export default function ProfileSetup() {
             </div>
           ))}
           <button type="submit" disabled={saving} data-testid="profile-submit-button">
-            {saving ? "Saving..." : needsPlan ? (plan === "browse" ? "Start Browsing" : "Continue to Payment") : "Save Changes"}
+            {saving ? "Saving..." : needsPlan ? "Continue to Payment" : "Save Changes"}
           </button>
           <p className="status" aria-live="polite" data-testid="profile-form-status">{status}</p>
         </form>

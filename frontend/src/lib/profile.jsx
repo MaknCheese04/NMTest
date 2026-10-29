@@ -68,7 +68,7 @@ export const initials = (name = "") =>
   name.split(/[\s._]+/).filter(Boolean).map((p) => p[0]).join("").slice(0, 2).toUpperCase() || "NM"
 
 const PLAN_KEY = "nm_plan"
-export const getSavedPlan = () => localStorage.getItem(PLAN_KEY) || "standard"
+export const getSavedPlan = () => ["standard", "pro", "artist"].find((p) => p === localStorage.getItem(PLAN_KEY)) || "standard"
 export const savePlan = (plan) => localStorage.setItem(PLAN_KEY, plan)
 
 export function useCheckout() {

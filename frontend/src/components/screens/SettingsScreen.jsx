@@ -47,7 +47,7 @@ export default function SettingsScreen() {
             <Row title={profile?.username} hint={profile?.email}>
               <button type="button" className="ghost-btn" onClick={() => navigate("/complete-profile")} data-testid="settings-edit-profile">Edit profile</button>
             </Row>
-            <Row title="Plan" hint={profile?.plan_name || "Browsing (free)"}>
+            <Row title="Plan" hint={profile?.plan_name || "No plan"}>
               <button type="button" className="ghost-btn" onClick={() => navigate("/subscribe")} data-testid="settings-manage-plan">Manage plan</button>
             </Row>
           </section>

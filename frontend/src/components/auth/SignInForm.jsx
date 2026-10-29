@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useSignIn } from "@clerk/react"
+import { setRemember } from "@/lib/remember"
 
 const BACKEND_URL = import.meta.env.REACT_APP_BACKEND_URL
 
@@ -17,17 +18,30 @@ function GoogleMark() {
   )
 }
 
+function EyeIcon({ off }) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+      {off && <path d="M3 3l18 18" />}
+    </svg>
+  )
+}
+
 export default function SignInForm() {
   const { signIn } = useSignIn()
   const navigate = useNavigate()
   const [id, setId] = useState("")
   const [password, setPassword] = useState("")
   const [code, setCode] = useState("")
+  const [showPw, setShowPw] = useState(false)
+  const [remember, setRememberOn] = useState(true)
   const [step, setStep] = useState("login")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
 
   const finish = async () => {
+    setRemember(remember)
     const { error } = await signIn.finalize({ navigate: () => navigate("/") })
     if (error) throw error
   }
@@ -100,8 +114,18 @@ export default function SignInForm() {
         <label htmlFor="signin-password">Password</label>
         <Link to="/sign-in/reset" className="nm-signin-forgot" data-testid="signin-forgot-link">Forgot password?</Link>
       </div>
-      <input id="signin-password" type="password" autoComplete="current-password" value={password}
-        onChange={(e) => setPassword(e.target.value)} required data-testid="signin-password-input" />
+      <div className="nm-pw">
+        <input id="signin-password" type={showPw ? "text" : "password"} autoComplete="current-password" value={password}
+          onChange={(e) => setPassword(e.target.value)} required data-testid="signin-password-input" />
+        <button type="button" className="nm-pw-eye" onClick={() => setShowPw((v) => !v)} aria-pressed={showPw}
+          aria-label={showPw ? "Hide password" : "Show password"} data-testid="signin-password-toggle">
+          <EyeIcon off={showPw} />
+        </button>
+      </div>
+      <label className="nm-remember" data-testid="signin-remember-label">
+        <input type="checkbox" checked={remember} onChange={(e) => setRememberOn(e.target.checked)} data-testid="signin-remember-checkbox" />
+        <span>Remember me</span>
+      </label>
       {error && <p className="nm-signin-error" role="alert" data-testid="signin-error">{error}</p>}
       <div id="clerk-captcha" />
       <button type="submit" disabled={busy || !signIn} data-testid="signin-submit-button">{busy ? "Signing in…" : "Sign In"}</button>
