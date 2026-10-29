@@ -8,6 +8,7 @@ import GlobeSearch from "./GlobeSearch"
 import EarthGlobe from "./EarthGlobe"
 import RegionPopup from "./RegionPopup"
 import { findRegion } from "@/lib/regions"
+import WelcomeTour from "./WelcomeTour"
 
 export default function GlobeHome() {
   const [globeLocation, setGlobeLocation] = useState(null)
@@ -45,6 +46,7 @@ export default function GlobeHome() {
           onRegionClick={({ lat, lon }) => { const r = findRegion(lon, lat); if (r) setRegion(r) }} />
         {region && <RegionPopup region={region} onClose={() => setRegion(null)} />}
       </div>
+      <WelcomeTour />
     </>
   )
 }

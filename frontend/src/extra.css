@@ -1404,3 +1404,18 @@ input[type="range"] { accent-color: #e3b14c; }
 .nm-signin .nm-pw-eye:hover { color: #f2d689; background: rgb(255 255 255 / 6%); transform: none; }
 .nm-signin .nm-remember { display: flex; align-items: center; gap: 10px; margin: -4px 0 16px; cursor: pointer; text-transform: none; }
 .nm-signin .nm-remember input { width: 18px; height: 18px; margin: 0; accent-color: #e3b14c; }
+
+/* ---------- Welcome tour ---------- */
+.tour-layer { position: fixed; inset: 0; z-index: 120; }
+.tour-dim { position: absolute; inset: 0; background: rgb(4 4 8 / 72%); }
+.tour-spot { position: fixed; border: 2px solid #f2d689; border-radius: 16px; box-shadow: 0 0 0 9999px rgb(4 4 8 / 72%), 0 0 30px rgb(242 214 137 / 45%); pointer-events: none; animation: plans-in 220ms ease both; }
+.tour-card { position: fixed; padding: 22px 22px 18px; background: #141820; border: 1px solid rgb(226 182 91 / 50%); border-radius: 18px; box-shadow: 0 30px 70px rgb(0 0 0 / 60%); animation: plans-in 260ms ease both; }
+.tour-card .player-kicker { margin: 0 0 6px; }
+.tour-card h2 { margin: 0 0 8px; color: #f8ecdc; font-size: 26px; }
+.tour-text { margin: 0 0 16px; color: #e3d6bf; font-size: 15px; line-height: 1.55; }
+.tour-dots { display: flex; gap: 6px; margin-bottom: 16px; }
+.tour-dots span { width: 8px; height: 8px; background: rgb(244 232 213 / 25%); border-radius: 50%; transition: background-color 200ms ease, transform 200ms ease; }
+.tour-dots span.on { background: #f2d689; transform: scale(1.25); }
+.tour-actions { display: flex; align-items: center; gap: 10px; }
+.tour-actions .text-link { margin-right: auto; font-size: 14px; }
+.tour-actions button:not(.text-link) { height: 40px; margin: 0; padding: 0 20px; font-size: 15px; }

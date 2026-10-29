@@ -86,3 +86,7 @@ User choices: real accounts (sign up / log in), land on the existing home page a
 - Free "just browsing" option removed (PlanPicker, Subscribe, ProfileSetup); /api/me/browse removed; profile.browsing always false, so existing browsing users are sent to /subscribe.
 - Sign-in: show/hide password eye (signin-password-toggle); Remember me checkbox (default on). Unticked -> localStorage nm-forget-me + session cookie nm_alive; RememberGuard (lib/remember.jsx) signs out once the browser is closed.
 - Hum matching: user chose to skip for now (needs a recognition service such as ACRCloud).
+
+## 2026-06 Welcome tour
+- WelcomeTour.jsx (rendered in GlobeHome): 3 spotlight steps (globe .player-content, nav-search, nav-profile). Shows once per account: PUT /me sets tour_pending on first profile completion; Profile.show_tour = tour_pending && paid plan; POST /api/me/tour-done clears it. Existing accounts (no field) never see it.
+- Test: mongosh newmusiq --eval db.profiles.updateOne({username_lower:"alexmorgan"},{$set:{tour_pending:true}}) to replay.

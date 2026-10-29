@@ -66,6 +66,7 @@ class Profile(BaseModel):
     plan_name: str = ""
     plan_level: int = 0
     browsing: bool = False
+    show_tour: bool = False
 
 
 class Comment(BaseModel):
@@ -98,6 +99,7 @@ def profile_out(doc: Optional[dict], user_id: str) -> Profile:
         plan_name=PLANS[plan]["name"] if plan else "",
         plan_level=level,
         browsing=False,
+        show_tour=bool(doc.get("tour_pending")) and bool(level),
     )
 
 
@@ -152,6 +154,9 @@ async def update_me(
         update["photo_path"] = result["path"]
         update["photo_type"] = photo.content_type
 
+    existing = await db.profiles.find_one({"user_id": user["user_id"]}, {"_id": 0, "completed": 1})
+    if not (existing or {}).get("completed"):
+        update["tour_pending"] = True
     await db.profiles.update_one(
         {"user_id": user["user_id"]},
         {"$set": update, "$setOnInsert": {"user_id": user["user_id"], "created_at": now_iso()}},
@@ -190,6 +195,10 @@ async def delete_me(user: dict = Depends(require_user)):
     return {"ok": True}
 
 
+@api_router.post("/me/tour-done")
+async def tour_done(user: dict = Depends(require_user)):
+    await db.profiles.update_one({"user_id": user["user_id"]}, {"$set": {"tour_pending": False}})
+    return {"ok": True}
 
 
 @api_router.get("/me/photo")
