@@ -24,6 +24,7 @@ try:
     from backend.music import music_router
     from backend.features import features_router
     from backend.weekly import weekly_router
+    from backend.login import login_router
 except ModuleNotFoundError:
     from deps import PLANS, client, db, plan_level, require_level
     from clerk_auth import clerk_router, require_user
@@ -34,6 +35,7 @@ except ModuleNotFoundError:
     from music import music_router
     from features import features_router
     from weekly import weekly_router
+    from login import login_router
 
 logger = logging.getLogger("newmusiq")
 logging.basicConfig(level=logging.INFO)
@@ -270,6 +272,7 @@ app.include_router(features_router)
 app.include_router(weekly_router)
 app.include_router(payments_router)
 app.include_router(clerk_router)
+app.include_router(login_router)
 
 app.add_middleware(
     CORSMiddleware,

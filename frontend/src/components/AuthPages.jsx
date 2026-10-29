@@ -1,9 +1,18 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { SignIn, SignUp } from "@clerk/react"
 import AuthLayout from "./AuthLayout"
+import SignInForm from "./auth/SignInForm"
 import PlanPicker from "./PlanPicker"
 import { getSavedPlan, savePlan } from "@/lib/profile"
+
+function SignInBody() {
+  const { pathname, search } = useLocation()
+  const sub = pathname.replace(/\/+$/, "")
+  if (sub === "/sign-in" && !search.includes("__clerk_ticket")) return <SignInForm />
+  if (sub.startsWith("/sign-in/reset")) return <SignIn routing="path" path="/sign-in/reset" signUpUrl="/sign-up" />
+  return <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" />
+}
 
 export function SignInPage() {
   return (
@@ -12,7 +21,7 @@ export function SignInPage() {
         New to NewMusiq? <Link to="/sign-up" data-testid="create-account-link">Create an Account</Link>
       </p>
     }>
-      <SignIn routing="path" path="/sign-in" signUpUrl="/sign-up" />
+      <SignInBody />
     </AuthLayout>
   )
 }

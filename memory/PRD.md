@@ -63,3 +63,21 @@ User choices: real accounts (sign up / log in), land on the existing home page a
 - Offline US state search in globe search (Nominatim rate-limits)
 - Fixes after test iteration 4: mobile popup no sideways overflow & sits above player; uploads fall back to offline country/state coordinates for pins when OpenStreetMap is rate-limited; Escape closes region popup
 - Known: Apple chart genre names follow the storefront language (e.g. Japanese in JP); centred-search camera can land slightly off-centre on some countries
+
+## Iteration 6 (2026-10-22)
+- Pins removed. ADMIN_EMAIL=murphmaklane@gmail.com (role admin set in preview DB too)
+- Sidebar nav -> full screens (routes inside shell): / Explore globe, /search, /profile, /studio, /studio/upload, /settings, /admin (admins only), /contact
+- Search: songs & artists (iTunes) + NewMusiq releases; by lyrics (GPT-5.4 identifies); sing/hum (Whisper transcribes -> GPT identifies; pure humming w/o words not supported)
+- Profile: liked songs, playlists (create/add/remove/delete), most visited places (from region pop-ups), my comments (click -> globe region or expanded player)
+- Studio: analytics (plays/listeners, line chart week/month/year, most played/liked), Albums + Singles shelves, Upload FAB -> upload screen (audio, cover, title, featured artists, single/album, location, lyrics). AI lyric sync: Whisper segments aligned to lines; synced lyrics in expanded player
+- Settings: Spotify-style (account, playback, notifications, privacy, language, about, sign out, delete account)
+- Admin: comments, Contact Us feedback, subscriptions (+MRR), artist content hide/restore, people/roles
+- Fonts: Pacifico wordmark (gold gradient + staff lines on login), Yanone Kaffeesatz for all other text
+- Region pop-up: top songs + top genre playlists are weekly AI-curated (GPT-5.4-mini, cached per region per ISO week in region_weekly) — NOT live web search; songs open official YouTube video (youtube-nocookie embed; found via YouTube search page scrape, or YouTube Data API if YOUTUBE_API_KEY set). YouTube ads cannot be blocked.
+
+## 2026-06 Sign-in update
+- Custom one-screen sign-in card (/sign-in): "Email or username" + password + Sign In, then Continue with Google. Email path uses Clerk signIn.password (+ email code if Clerk asks); username path uses POST /api/auth/username-sign-in (backend/login.py: verifies password via Clerk, rate-limited 5 fails/15min per username, returns one-time ticket).
+- Forgot password -> /sign-in/reset (Clerk component). Other /sign-in/* subpaths (sso-callback, ticket) use Clerk <SignIn/>.
+- Google enabled on Clerk (sign_in ["email","google"]). Apple sign-in NOT available with managed auth.
+- Search screen: search bar back on the left, slimmer (36px), mode buttons left-aligned.
+- Pending: hum/melody matching not real yet; last round (Liked Songs playlist, playlist modal, upload order) not fully tested.

@@ -9,16 +9,21 @@ from typing import Literal, Optional
 
 from emergentintegrations.llm.chat import LlmChat, StreamDone, TextDelta, UserMessage
 from emergentintegrations.llm.openai import OpenAISpeechToText
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 try:
     from backend.deps import PLANS, db, require_completed, require_level, require_role
     from backend.music import ITUNES, _get, song_from_itunes
+    from backend.weekly import youtube_search_many
+    from backend.storage import APP_NAME, get_object, put_object
 except ModuleNotFoundError:
     from deps import PLANS, db, require_completed, require_level, require_role
     from music import ITUNES, _get, song_from_itunes
+    from weekly import youtube_search_many
+    from storage import APP_NAME, get_object, put_object
 
 features_router = APIRouter(prefix="/api")
 LLM_KEY = os.environ.get("EMERGENT_LLM_KEY")
@@ -61,17 +66,17 @@ async def identify_songs(text: str) -> list:
 
 def itunes_find(title: str, artist: str) -> Optional[dict]:
     try:
-        res = _get(f"{ITUNES}/search", {"term": f"{artist} {title}", "entity": "song", "limit": 3, "country": "us"})["results"]
+        res = youtube_search_many(f"{artist} {title} official music video", 1)
     except Exception:
         return None
-    return song_from_itunes(res[0]) if res else None
+    return {**res[0], "song_title": title, "artist": artist} if res else None
 
 
 async def guesses_to_songs(guesses: list) -> list:
     songs = []
     for g in guesses:
         s = await run_in_threadpool(itunes_find, g.get("title", ""), g.get("artist", ""))
-        if s and s["id"] not in {x["id"] for x in songs}:
+        if s and s["video_id"] not in {x["video_id"] for x in songs}:
             songs.append(s)
     return songs
 
@@ -124,7 +129,7 @@ async def sync_track_lyrics(track_id: str, data: bytes, ext: str, lyrics: str):
 async def search(q: str = Query(..., min_length=1, max_length=120), profile: dict = Depends(require_completed)):
     def load():
         try:
-            return [song_from_itunes(r) for r in _get(f"{ITUNES}/search", {"term": q, "entity": "song", "limit": 20, "country": "us"})["results"]]
+            return youtube_search_many(f"{q} official music video", 18)
         except Exception:
             return []
     songs = await run_in_threadpool(load)
@@ -200,16 +205,32 @@ class PlaylistIn(BaseModel):
 
 @features_router.get("/me/playlists")
 async def my_playlists(profile: dict = Depends(require_completed)):
-    return await db.playlists.find({"user_id": profile["user_id"]}, {"_id": 0, "user_id": 0}).sort("created_at", -1).to_list(100)
+    return await db.playlists.find({"user_id": profile["user_id"]}, {"_id": 0, "user_id": 0, "cover_path": 0}).sort("created_at", -1).to_list(100)
 
 
 @features_router.post("/me/playlists")
-async def create_playlist(body: PlaylistIn, profile: dict = Depends(require_completed)):
-    doc = {"id": str(uuid.uuid4()), "user_id": profile["user_id"], "name": body.name.strip(), "items": [], "created_at": now().isoformat()}
+async def create_playlist(name: str = Form(..., min_length=1, max_length=60), cover: Optional[UploadFile] = File(None),
+                          profile: dict = Depends(require_completed)):
+    doc = {"id": str(uuid.uuid4()), "user_id": profile["user_id"], "name": name.strip(), "items": [], "created_at": now().isoformat(), "has_cover": False}
+    if cover is not None and cover.filename:
+        if cover.content_type not in ("image/png", "image/jpeg", "image/webp"):
+            raise HTTPException(400, "Cover must be PNG, JPG or WEBP.")
+        data = await cover.read()
+        if len(data) > 5 * 1024 * 1024:
+            raise HTTPException(400, "Cover must be under 5 MB.")
+        res = await run_in_threadpool(put_object, f"{APP_NAME}/playlists/{profile['user_id']}/{doc['id']}", data, cover.content_type)
+        doc.update(has_cover=True, cover_path=res["path"], cover_type=cover.content_type)
     await db.playlists.insert_one(doc)
-    doc.pop("_id", None)
-    doc.pop("user_id")
-    return doc
+    return {k: v for k, v in doc.items() if k not in ("_id", "user_id", "cover_path", "cover_type")}
+
+
+@features_router.get("/me/playlists/{pid}/cover")
+async def playlist_cover(pid: str, profile: dict = Depends(require_completed)):
+    pl = await db.playlists.find_one({"id": pid, "user_id": profile["user_id"]}, {"_id": 0})
+    if not pl or not pl.get("cover_path"):
+        raise HTTPException(404, "No cover")
+    data, ctype = await run_in_threadpool(get_object, pl["cover_path"])
+    return Response(content=data, media_type=pl.get("cover_type") or ctype)
 
 
 @features_router.post("/me/playlists/{pid}/items")
@@ -342,7 +363,8 @@ class FeedbackStatus(BaseModel):
 
 @features_router.patch("/admin/feedback/{fid}")
 async def admin_feedback_status(fid: str, body: FeedbackStatus, admin: dict = Depends(require_role("admin"))):
-    await db.feedback.update_one({"id": fid}, {"$set": {"status": body.status}})
+    if (await db.feedback.update_one({"id": fid}, {"$set": {"status": body.status}})).matched_count == 0:
+        raise HTTPException(404, "Not found")
     return {"ok": True}
 
 
@@ -369,5 +391,6 @@ class TrackHidden(BaseModel):
 
 @features_router.patch("/admin/tracks/{track_id}")
 async def admin_track_hide(track_id: str, body: TrackHidden, admin: dict = Depends(require_role("admin"))):
-    await db.tracks.update_one({"id": track_id}, {"$set": {"is_deleted": body.hidden}})
+    if (await db.tracks.update_one({"id": track_id}, {"$set": {"is_deleted": body.hidden}})).matched_count == 0:
+        raise HTTPException(404, "Not found")
     return {"ok": True}

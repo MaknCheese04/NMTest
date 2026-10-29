@@ -44,7 +44,7 @@ export default function SongItem({ item, rank, extra, onOpen }) {
       {rank && <span className="rp-rank">{rank}</span>}
       {item.artwork ? <img src={item.artwork} alt="" /> : <span className="rp-art-fallback">♪</span>}
       <button type="button" className="song-item-text" onClick={() => (onOpen ? onOpen(item) : playItem(player, item))}>
-        <strong>{item.title}</strong><em>{item.artist}{item.kind === "track" ? " · NewMusiq release" : ""}</em>
+        <strong>{item.title}</strong><em>{item.artist}{item.kind === "track" ? " · NewMusiq release" : item.kind === "video" ? " · YouTube" : ""}</em>
       </button>
       {extra}
       <LikeButton item={item} />

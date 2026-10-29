@@ -87,6 +87,39 @@ def youtube_search(query: str) -> dict | None:
     return {"video_id": ids[0], "video_title": titles[0] if titles else query} if ids else None
 
 
+def _walk(node, out):
+    if isinstance(node, dict):
+        vr = node.get("videoRenderer")
+        if isinstance(vr, dict) and vr.get("videoId"):
+            title = "".join(r.get("text", "") for r in vr.get("title", {}).get("runs", []))
+            owner = "".join(r.get("text", "") for r in vr.get("ownerText", {}).get("runs", []))
+            out.append({"video_id": vr["videoId"], "title": title, "channel": owner})
+        for v in node.values():
+            _walk(v, out)
+    elif isinstance(node, list):
+        for v in node:
+            _walk(v, out)
+
+
+def youtube_search_many(query: str, limit: int = 15) -> list:
+    r = requests.get("https://www.youtube.com/results", params={"search_query": query}, timeout=10,
+                     headers={"User-Agent": "Mozilla/5.0", "Accept-Language": "en-US,en;q=0.9"})
+    r.raise_for_status()
+    m = re.search(r"var ytInitialData = (\{.*?\});</script>", r.text, re.S)
+    out: list = []
+    if m:
+        try:
+            _walk(json.loads(m.group(1)), out)
+        except ValueError:
+            pass
+    seen, res = set(), []
+    for v in out:
+        if v["video_id"] not in seen:
+            seen.add(v["video_id"])
+            res.append({**v, "thumbnail": f"https://i.ytimg.com/vi/{v['video_id']}/mqdefault.jpg"})
+    return res[:limit]
+
+
 @weekly_router.get("/video")
 async def find_video(artist: str = Query(..., max_length=120), title: str = Query(..., max_length=120),
                      profile: dict = Depends(require_completed)):

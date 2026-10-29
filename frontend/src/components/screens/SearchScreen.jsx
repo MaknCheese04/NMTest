@@ -3,7 +3,7 @@ import Screen from "./Screen"
 import Icon from "../Icon"
 import SongItem from "../SongItem"
 import { useApi } from "@/lib/profile"
-import { itemFromSong, itemFromTrack } from "@/lib/library"
+import { itemFromTrack, itemFromVideo } from "@/lib/library"
 
 function HumButton({ onResult }) {
   const api = useApi()
@@ -96,7 +96,8 @@ export default function SearchScreen() {
       {res && (
         <section className="screen-section">
           <h2>{mode === "lyrics" ? "Best matches" : "Songs"}</h2>
-          {res.songs.length ? <div className="song-list" data-testid="search-results">{res.songs.map((s) => <SongItem key={s.id} item={itemFromSong(s)} />)}</div>
+          <p className="rp-muted">Official videos from YouTube</p>
+          {(res.songs ?? []).length ? <div className="song-list" data-testid="search-results">{res.songs.map((s) => <SongItem key={s.video_id} item={itemFromVideo(s)} />)}</div>
             : !busy && <p className="rp-muted" data-testid="search-empty">No songs found.</p>}
         </section>
       )}

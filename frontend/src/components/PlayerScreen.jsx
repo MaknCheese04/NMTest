@@ -4,6 +4,7 @@ import PlayerBar from "./PlayerBar"
 import BrowseBar from "./BrowseBar"
 import { PlayerProvider, usePlayer } from "@/lib/player"
 import { LibraryProvider } from "@/lib/library"
+import VideoDock from "./VideoDock"
 
 function Shell() {
   const player = usePlayer()
@@ -12,6 +13,7 @@ function Shell() {
       <Sidebar />
       <section className="now-playing">
         <Outlet />
+        <VideoDock />
         {player.listener || player.track ? <PlayerBar /> : <BrowseBar />}
       </section>
     </main>
